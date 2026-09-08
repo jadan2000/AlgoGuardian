@@ -1,5 +1,6 @@
-from fastapi import APIRouter
-from services.config_service import load_config, save_config
+from fastapi import APIRouter, HTTPException
+
+from services.config_service import ConfigError, load_config, save_config
 
 router = APIRouter()
 
@@ -11,14 +12,11 @@ def get_config():
 
 @router.post("/")
 def update_config(config: dict):
+    try:
+        current = load_config()
+        current.update(config)
+        validated = save_config(current)
+    except ConfigError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
-    current = load_config()
-
-    current.update(config)
-
-    save_config(current)
-
-    return {
-        "success": True,
-        "config": current
-    }
+    return {"success": True, "config": validated}
