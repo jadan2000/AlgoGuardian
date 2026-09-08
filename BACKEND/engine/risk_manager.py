@@ -22,6 +22,9 @@ class RiskManager:
             return False, "ACCOUNT UNAVAILABLE"
 
         symbol = signal.get("symbol")
+        if not symbol:
+            return False, "INVALID SYMBOL"
+
         positions = mt5.positions_get(symbol=symbol) or []
         max_open = int(config.get("max_open_positions", 1))
         if len(positions) >= max_open:
@@ -35,14 +38,16 @@ class RiskManager:
             deal for deal in deals
             if getattr(deal, "entry", None) in (mt5.DEAL_ENTRY_IN, mt5.DEAL_ENTRY_INOUT)
             and float(getattr(deal, "volume", 0.0)) > 0
+            and getattr(deal, "symbol", "") == symbol
         ]
         max_daily_trades = int(config.get("max_trades_per_day", 0))
         if max_daily_trades > 0 and len(entry_deals) >= max_daily_trades:
             return False, "MAX TRADES PER DAY"
 
-        # Closed deal P/L for the current day. Floating P/L comes from account.profit.
         closed_pnl = sum(
             float(getattr(deal, "profit", 0.0))
+            + float(getattr(deal, "commission", 0.0))
+            + float(getattr(deal, "swap", 0.0))
             for deal in deals
             if getattr(deal, "entry", None) in (mt5.DEAL_ENTRY_OUT, mt5.DEAL_ENTRY_INOUT)
         )
@@ -67,5 +72,16 @@ class RiskManager:
         take_distance = abs(float(signal.get("take_profit", 0.0)))
         if stop_distance <= 0 or take_distance <= 0:
             return False, "INVALID SL/TP"
+
+        info = mt5.symbol_info(symbol)
+        tick = mt5.symbol_info_tick(symbol)
+        if info is None or tick is None:
+            return False, "SYMBOL DATA UNAVAILABLE"
+
+        min_stop = float(getattr(info, "trade_stops_level", 0)) * float(info.point)
+        if min_stop > 0 and stop_distance < min_stop:
+            return False, "STOP LOSS BELOW BROKER MINIMUM"
+        if min_stop > 0 and take_distance < min_stop:
+            return False, "TAKE PROFIT BELOW BROKER MINIMUM"
 
         return True, "OK"
