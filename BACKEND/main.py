@@ -1,0 +1,59 @@
+from fastapi import FastAPI
+from api.routes.bot import router as bot_router
+from api.routes.config import router as config_router
+from api.routes.trades import router as trades_router
+from api.routes.logs import router as logs_router
+from api.routes.analytics import router as analytics_router
+from fastapi.middleware.cors import CORSMiddleware
+from api.routes.account import router as account_router
+from threading import Thread
+from engine.bot_runner import run_bot
+
+app = FastAPI(title="Trading Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://192.168.100.159:8080",
+        "http://192.168.100.36:8080",
+        "http://192.168.0.103:8080"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(bot_router, prefix="/bot", tags=["bot"])
+app.include_router(config_router, prefix="/config", tags=["config"])
+app.include_router(trades_router, prefix="/trades", tags=["trades"])
+app.include_router(logs_router, prefix="/logs", tags=["logs"])
+app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
+app.include_router(account_router, prefix="/api/trading", tags=["account"])
+
+
+@app.on_event("startup")
+def start_bot_runner():
+
+    Thread(
+        target=run_bot,
+        daemon=True
+    ).start()
+
+    print("BOT RUNNER STARTED")
+
+@app.get("/")
+def health_check():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+    )

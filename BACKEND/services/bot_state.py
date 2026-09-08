@@ -1,0 +1,3 @@
+BOT_RUNNING = True
+BOT_PAUSED = False
+KILL_SWITCH = False
