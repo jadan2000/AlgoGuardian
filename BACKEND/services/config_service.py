@@ -6,12 +6,12 @@ STORAGE_PATH = Path(__file__).resolve().parents[1] / "storage" / "config.json"
 _CONFIG_LOCK = RLock()
 
 DEFAULT_CONFIG = {
-    "risk_per_trade": 1.0,
-    "max_daily_loss": 3.0,
+    "risk_per_trade": 0.5,
+    "max_daily_loss": 2.0,
     "max_drawdown": 5.0,
-    "max_trades_per_day": 3,
+    "max_trades_per_day": 8,
     "confluence_threshold": 60,
-    "entry_ema_filter": False,
+    "entry_ema_filter": True,
     "trend_filter": True,
     "adx_filter": True,
     "atr_filter": True,
@@ -19,22 +19,24 @@ DEFAULT_CONFIG = {
     "momentum_filter": True,
     "spread_filter": True,
     "breakout_filter": False,
-    "ema_fast": 20,
-    "ema_slow": 50,
-    "entry_ema": 20,
-    "adx_threshold": 15,
-    "atr_ratio": 0.5,
-    "atr_extension": 1.2,
-    "momentum_multiplier": 1.5,
-    "max_spread": 0.3,
-    "trend_tf": "H1",
-    "entry_tf": "M5",
-    "breakout_buffer": 0.15,
+    "ema_fast": 9,
+    "ema_slow": 21,
+    "entry_ema": 9,
+    "adx_threshold": 20,
+    "atr_ratio": 0.7,
+    "atr_extension": 1.5,
+    "momentum_multiplier": 1.2,
+    "momentum_min_body_atr": 0.20,
+    "momentum_close_location": 0.60,
+    "max_spread": 0.20,
+    "trend_tf": "M5",
+    "entry_tf": "M1",
+    "breakout_buffer": 0.10,
     "breakout_lookback": 5,
-    "stop_loss": 1.0,
-    "take_profit": 1.2,
-    "cooldown_minutes": 2,
-    "max_open_positions": 2,
+    "stop_loss": 1.5,
+    "take_profit": 2.25,
+    "cooldown_minutes": 3,
+    "max_open_positions": 1,
     "trading_pairs": ["XAUUSDm"],
     "allow_london": True,
     "allow_ny": True,
@@ -44,7 +46,6 @@ DEFAULT_CONFIG = {
     "magic": 20250620,
     "order_comment": "AlgoGuardian",
 }
-
 
 NUMERIC_RANGES = {
     "risk_per_trade": (0.0, 100.0),
@@ -59,6 +60,8 @@ NUMERIC_RANGES = {
     "atr_ratio": (0, 100),
     "atr_extension": (0, 100),
     "momentum_multiplier": (0, 100),
+    "momentum_min_body_atr": (0, 100),
+    "momentum_close_location": (0.5, 1.0),
     "max_spread": (0, 1000),
     "breakout_buffer": (0, 1000),
     "breakout_lookback": (1, 500),
@@ -79,10 +82,8 @@ BOOL_KEYS = {
 
 TEXT_KEYS = {"trend_tf", "entry_tf", "order_comment"}
 
-
 class ConfigError(ValueError):
     pass
-
 
 def validate_config(config_data: dict) -> dict:
     if not isinstance(config_data, dict):
@@ -125,7 +126,6 @@ def validate_config(config_data: dict) -> dict:
 
     return merged
 
-
 def load_config() -> dict:
     with _CONFIG_LOCK:
         data = {}
@@ -139,7 +139,6 @@ def load_config() -> dict:
             return validate_config(data)
         except ConfigError:
             return validate_config(DEFAULT_CONFIG)
-
 
 def save_config(config_data: dict) -> dict:
     validated = validate_config(config_data)
