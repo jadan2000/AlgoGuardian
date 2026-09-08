@@ -39,7 +39,20 @@ def get_account():
         for pos in positions
     ]
 
-    result = {
+    closed_trades = []
+    history_orders = mt5.history_orders_get(datetime.now() - timedelta(days=7), datetime.now()) or []
+    for order in history_orders:
+        if getattr(order, "state", None) != mt5.ORDER_STATE_FILLED:
+            continue
+        closed_trades.append({
+            "ticket": str(order.ticket),
+            "pair": order.symbol,
+            "type": "BUY" if order.type == mt5.ORDER_TYPE_BUY else "SELL",
+            "profit": 0,
+            "volume": order.volume_initial,
+        })
+
+    return {
         "balance": account.balance,
         "equity": account.equity,
         "profit": account.profit,
@@ -53,23 +66,8 @@ def get_account():
         "expectancy": stats["expectancy"],
         "profit_factor": stats["profit_factor"],
         "trade_activity": trade_activity,
-        "closed_trades": [],
+        "closed_trades": closed_trades[:10],
     }
-
-    history_orders = mt5.history_orders_get(datetime.now() - timedelta(days=7), datetime.now()) or []
-    result["closed_trades"] = [
-        {
-            "ticket": str(order.ticket),
-            "pair": order.symbol,
-            "type": "BUY" if order.type == mt5.ORDER_TYPE_BUY else "SELL",
-            "profit": 0,
-            "volume": order.volume_initial,
-        }
-        for order in history_orders
-        if getattr(order, "state", None) == mt5.ORDER_STATE_FILLED
-    ][:10]
-
-    return result
 
 
 @router.get("/market-overview")
