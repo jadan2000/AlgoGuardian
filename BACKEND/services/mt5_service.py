@@ -1,5 +1,4 @@
 import threading
-from typing import Optional
 
 import MetaTrader5 as mt5
 
@@ -7,7 +6,11 @@ from config import MT5_LOGIN, MT5_PASSWORD, MT5_SERVER, MT5_PATH
 
 
 class MT5Service:
-    """Process-wide MT5 session with safe reuse and explicit initialization."""
+    """Process-wide MT5 connection manager.
+
+    MetaTrader5 exposes a process-wide API, so the backend should reuse one
+    initialized terminal session instead of repeatedly initialize/login/shutdown.
+    """
 
     _lock = threading.RLock()
     _connected = False
@@ -15,15 +18,25 @@ class MT5Service:
     @classmethod
     def connect(cls) -> bool:
         with cls._lock:
-            if cls._connected and mt5.terminal_info() is not None and mt5.account_info() is not None:
+            if cls._connected and mt5.account_info() is not None:
                 return True
 
-            if mt5.terminal_info() is None:
+            terminal = mt5.terminal_info()
+            if terminal is None:
                 if not mt5.initialize(path=MT5_PATH):
                     cls._connected = False
                     return False
 
-            if not mt5.login(MT5_LOGIN, password=MT5_PASSWORD, server=MT5_SERVER):
+            account = mt5.account_info()
+            if account is not None and int(getattr(account, "login", 0)) == int(MT5_LOGIN):
+                cls._connected = True
+                return True
+
+            if not mt5.login(
+                MT5_LOGIN,
+                password=MT5_PASSWORD,
+                server=MT5_SERVER,
+            ):
                 cls._connected = False
                 return False
 
@@ -31,16 +44,21 @@ class MT5Service:
             return cls._connected
 
     @classmethod
-    def shutdown(cls) -> None:
+    def shutdown(cls):
         with cls._lock:
-            if cls._connected:
+            try:
                 mt5.shutdown()
-            cls._connected = False
+            finally:
+                cls._connected = False
 
     @classmethod
     def is_connected(cls) -> bool:
         with cls._lock:
-            return cls._connected and mt5.account_info() is not None
+            if not cls._connected:
+                return False
+            alive = mt5.account_info() is not None
+            cls._connected = alive
+            return alive
 
     @classmethod
     def ensure_symbol(cls, symbol: str) -> bool:
@@ -57,6 +75,6 @@ class MT5Service:
     def account_info(cls):
         return mt5.account_info() if cls.connect() else None
 
-    @classmethod
-    def last_error(cls):
+    @staticmethod
+    def last_error():
         return mt5.last_error()
