@@ -111,18 +111,43 @@ class SignalEngine:
             sell_trigger = previous_low - breakout_buffer
 
             body = abs(float(current["close"]) - float(current["open"]))
-            avg_body = float(entry_df["body"].tail(20).mean()) if "body" in entry_df else float((entry_df["close"] - entry_df["open"]).abs().tail(20).mean())
+            avg_body = float((entry_df["close"] - entry_df["open"]).abs().iloc[-22:-2].mean())
             body_ratio = body / avg_body if avg_body > 0 else 0.0
             bullish_body = float(current["close"]) > float(current["open"])
             bearish_body = float(current["close"]) < float(current["open"])
 
+            # Fast-scalping momentum confirmation:
+            # 1) candle body must have meaningful displacement relative to ATR OR
+            #    satisfy the legacy body-ratio threshold;
+            # 2) the candle must close strongly in the direction of the trend.
+            body_atr_ratio = body / current_atr if current_atr > 0 else 0.0
+            candle_range = float(current["high"] - current["low"])
+            close_location = (
+                (float(current["close"]) - float(current["low"])) / candle_range
+                if candle_range > 0
+                else 0.5
+            )
+
+            momentum_threshold = float(config.get("momentum_multiplier", 1.5))
+            min_body_atr = float(config.get("momentum_min_body_atr", 0.20))
+            min_close_location = float(config.get("momentum_close_location", 0.60))
+
             self.log("BODY_RATIO", round(body_ratio, 2))
+            self.log("BODY_ATR_RATIO", round(body_atr_ratio, 2))
+            self.log("CLOSE_LOCATION", round(close_location, 2))
+
             if config.get("momentum_filter", True):
-                if body_ratio < float(config["momentum_multiplier"]):
+                body_quality = body_ratio >= momentum_threshold or body_atr_ratio >= min_body_atr
+                directional_quality = (
+                    (bullish_trend and bullish_body and close_location >= min_close_location)
+                    or (bearish_trend and bearish_body and close_location <= (1.0 - min_close_location))
+                )
+
+                if not body_quality:
                     return {"status": "BLOCKED", "symbol": symbol, "reason": "MOMENTUM"}
-                if bullish_trend and not bullish_body:
-                    return {"status": "BLOCKED", "symbol": symbol, "reason": "BULLISH MOMENTUM"}
-                if bearish_trend and not bearish_body:
+                if not directional_quality:
+                    if bullish_trend:
+                        return {"status": "BLOCKED", "symbol": symbol, "reason": "BULLISH MOMENTUM"}
                     return {"status": "BLOCKED", "symbol": symbol, "reason": "BEARISH MOMENTUM"}
 
             spread = self.mt5.get_spread(symbol)
@@ -140,12 +165,10 @@ class SignalEngine:
                 if bearish_trend and entry_close > ema_value:
                     return {"status": "BLOCKED", "symbol": symbol, "reason": "ABOVE ENTRY EMA"}
 
-            # Breakout mode is explicit. It is not merely logged: it participates in the final signal decision.
             breakout_filter = bool(config.get("breakout_filter", False))
             breakout_buy = entry_close >= buy_trigger
             breakout_sell = entry_close <= sell_trigger
 
-            # Pullback mode remains available when breakout_filter is disabled.
             buy_condition = bullish_body
             sell_condition = bearish_body
             if config.get("entry_ema_filter", True) and ema_value is not None:
