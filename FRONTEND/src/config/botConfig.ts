@@ -1,43 +1,56 @@
 export const defaultBotConfig = {
   // Risk
-  risk_per_trade: 1.0,
-  max_daily_loss: 3.0,
+  risk_per_trade: 0.5,
+  max_daily_loss: 2.0,
   max_drawdown: 5.0,
 
   // Trading
-  max_trades_per_day: 3,
+  max_trades_per_day: 8,
   trading_pairs: ["XAUUSDm"],
   allow_london: true,
   allow_ny: true,
 
   // Filters
-  ema_fast: 50,
-  ema_slow: 200,
-
-  entry_ema: 20,
+  trend_filter: true,
+  adx_filter: true,
+  atr_filter: true,
+  atr_extension_filter: false,
+  momentum_filter: true,
+  spread_filter: true,
+  breakout_filter: false,
   entry_ema_filter: true,
 
-  adx_threshold: 25,
+  ema_fast: 9,
+  ema_slow: 21,
+  entry_ema: 9,
 
-  atr_ratio: 0.8,
-  atr_extension: 3.0,
+  adx_threshold: 20,
+  atr_ratio: 0.7,
+  atr_extension: 1.5,
 
-  momentum_multiplier: 1.5,
+  momentum_multiplier: 1.2,
+  momentum_min_body_atr: 0.2,
+  momentum_close_location: 0.6,
 
-  max_spread: 0.30,
+  max_spread: 0.2,
 
-  trend_tf: "H1",
-  entry_tf: "M5",
+  trend_tf: "M5",
+  entry_tf: "M1",
 
-  higher_low_filter: true,
-  breakout_filter: true,
+  breakout_buffer: 0.1,
+  breakout_lookback: 5,
 
-  cooldown_minutes: 15,
-  max_open_positions: 2,
-  breakout_buffer: 0.25,
+  stop_loss: 1.5,
+  take_profit: 2.25,
 
-stop_loss: 1.2,
-take_profit: 1.8,
+  cooldown_minutes: 3,
+  max_open_positions: 1,
+
+  // Execution
+  lot_size: 0.01,
+  deviation: 20,
+  magic: 20250620,
+  order_comment: "AlgoGuardian",
 
   // Quality
   confluence_threshold: 60,
