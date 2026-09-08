@@ -1,12 +1,12 @@
-from fastapi import APIRouter
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
 
+from fastapi import APIRouter
 import MetaTrader5 as mt5
 
 from services.config_service import load_config
-from services.trade_service import calculate_stats
+from services.trade_service import calculate_stats, get_closed_trade_stats
 from services.mt5_service import MT5Service
 
 router = APIRouter()
@@ -39,13 +39,21 @@ def get_account():
         for pos in positions
     ]
 
+    now = datetime.now()
+    history_orders = mt5.history_orders_get(now - timedelta(days=7), now) or []
     closed_trades = []
-    history_orders = mt5.history_orders_get(datetime.now() - timedelta(days=7), datetime.now()) or []
+    seen_positions = set()
+
     for order in history_orders:
+        position_id = int(getattr(order, "position_id", 0) or 0)
+        if position_id <= 0 or position_id in seen_positions:
+            continue
         if getattr(order, "state", None) != mt5.ORDER_STATE_FILLED:
             continue
+        seen_positions.add(position_id)
         closed_trades.append({
             "ticket": str(order.ticket),
+            "position_id": position_id,
             "pair": order.symbol,
             "type": "BUY" if order.type == mt5.ORDER_TYPE_BUY else "SELL",
             "profit": 0,
@@ -53,13 +61,13 @@ def get_account():
         })
 
     return {
-        "balance": account.balance,
-        "equity": account.equity,
-        "profit": account.profit,
-        "margin": account.margin,
-        "free_margin": account.margin_free,
+        "balance": float(account.balance),
+        "equity": float(account.equity),
+        "profit": float(account.profit),
+        "margin": float(account.margin),
+        "free_margin": float(account.margin_free),
         "open_positions": len(positions),
-        "daily_pnl": account.profit,
+        "daily_pnl": float(account.profit),
         "daily_pnl_percent": round((account.profit / account.balance) * 100, 2) if account.balance > 0 else 0,
         "win_rate": stats["win_rate"],
         "drawdown": stats["drawdown"],
@@ -75,7 +83,7 @@ def market_overview():
     if not MT5Service.connect():
         return {"pairs": []}
 
-    symbols = ["XAUUSDm", "EURUSDm", "GBPUSDm", "USDJPYm", "EURGBPm"]
+    symbols = load_config().get("trading_pairs", ["XAUUSDm"])
     pairs = []
 
     for symbol in symbols:
