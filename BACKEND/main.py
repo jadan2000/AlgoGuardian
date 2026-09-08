@@ -1,15 +1,27 @@
+from contextlib import asynccontextmanager
+from threading import Thread
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.routes.account import router as account_router
+from api.routes.analytics import router as analytics_router
 from api.routes.bot import router as bot_router
 from api.routes.config import router as config_router
-from api.routes.trades import router as trades_router
 from api.routes.logs import router as logs_router
-from api.routes.analytics import router as analytics_router
-from fastapi.middleware.cors import CORSMiddleware
-from api.routes.account import router as account_router
-from threading import Thread
+from api.routes.trades import router as trades_router
 from engine.bot_runner import run_bot
 
-app = FastAPI(title="Trading Backend")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bot_thread = Thread(target=run_bot, name="trading-bot-runner", daemon=True)
+    bot_thread.start()
+    print("BOT RUNNER STARTED")
+    yield
+
+
+app = FastAPI(title="Trading Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,7 +32,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://192.168.100.159:8080",
         "http://192.168.100.36:8080",
-        "http://192.168.0.103:8080"
+        "http://192.168.0.103:8080",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -35,25 +47,11 @@ app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 app.include_router(account_router, prefix="/api/trading", tags=["account"])
 
 
-@app.on_event("startup")
-def start_bot_runner():
-
-    Thread(
-        target=run_bot,
-        daemon=True
-    ).start()
-
-    print("BOT RUNNER STARTED")
-
 @app.get("/")
 def health_check():
     return {"status": "ok"}
 
+
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000)
