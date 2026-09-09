@@ -6,6 +6,12 @@ from pathlib import Path
 from engine.signal_engine import SignalEngine
 from engine.execution_engine import ExecutionEngine
 from services import bot_state
+from services.experiment_journal import (
+    record_error,
+    record_execution,
+    record_signal,
+    run_checkpoint_if_due,
+)
 
 
 SIGNALS_FILE = Path(__file__).resolve().parents[1] / "storage" / "signals.json"
@@ -34,8 +40,15 @@ def run_bot():
     print("BOT RUNNER STARTED")
     print("=" * 60)
 
+    cycle_id = run_checkpoint_if_due()
+
     while True:
         try:
+            # Checkpointing is deliberately separate from strategy execution.
+            # It records the paper experiment every two hours without changing
+            # the strategy or hot-reloading code inside the live process.
+            cycle_id = run_checkpoint_if_due() or cycle_id
+
             if bot_state.KILL_SWITCH:
                 print("[BOT] KILL SWITCH ACTIVE")
                 time.sleep(2)
@@ -57,18 +70,21 @@ def run_bot():
 
             if signal:
                 save_signal(signal)
+                record_signal(cycle_id, signal)
                 if signal.get("status") == "EXECUTED":
                     print("[BOT] EXECUTING SIGNAL")
                     result = ExecutionEngine().execute(signal)
                     print("EXECUTION RESULT:", result)
+                    record_execution(cycle_id, signal, result)
 
-        except Exception:
+        except Exception as exc:
+            record_error(cycle_id, f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
             print("=" * 60)
             print("BOT ERROR")
             traceback.print_exc()
             print("=" * 60)
 
-        # Five seconds is retained for the existing UI responsiveness, but the
-        # signal engine uses only closed candles so the same candle cannot create
-        # a second signal based on changing intrabar values.
+        # Five seconds is retained for existing UI responsiveness. Signal
+        # generation uses closed candles, so the same candle cannot create a
+        # second signal from changing intrabar values.
         time.sleep(5)
