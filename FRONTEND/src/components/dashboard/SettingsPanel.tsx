@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Settings, Save, AlertCircle, Play, StopCircle, Pause, AlertTriangle } from 'lucide-react';
+import { Save, Lock, AlertTriangle } from 'lucide-react';
 import { useBotContext } from '@/contexts/BotContext';
 import { defaultBotConfig } from '@/config/botConfig';
 import { API_BASE } from '@/config/api';
 
 interface BotConfig {
-  is_active: boolean;
+  is_active?: boolean;
   risk_per_trade: number;
   max_trades_per_day: number;
   max_daily_loss: number;
@@ -22,7 +21,6 @@ interface BotConfig {
   allow_london: boolean;
   allow_ny: boolean;
   demo_mode: boolean;
-
   ema_fast: number;
   ema_slow: number;
   entry_ema: number;
@@ -39,10 +37,8 @@ interface BotConfig {
   max_open_positions: number;
   breakout_buffer: number;
   breakout_lookback: number;
-
   stop_loss: number;
   take_profit: number;
-
   trend_filter: boolean;
   adx_filter: boolean;
   atr_filter: boolean;
@@ -51,63 +47,52 @@ interface BotConfig {
   spread_filter: boolean;
   breakout_filter: boolean;
   entry_ema_filter: boolean;
-
   lot_size: number;
   deviation: number;
   magic: number;
   order_comment: string;
 }
 
-export function SettingsPanel() {
-  const { isActive, isPaused, session, startBot, stopBot, pauseBot, resumeBot, refreshBotStatus } = useBotContext();
+const lockedFields = new Set([
+  'risk_per_trade',
+  'max_daily_loss',
+  'max_drawdown',
+  'max_trades_per_day',
+  'max_open_positions',
+]);
 
+export function SettingsPanel() {
+  const { refreshBotStatus } = useBotContext();
   const [config, setConfig] = useState<BotConfig>({
+    ...defaultBotConfig,
     is_active: false,
     demo_mode: false,
-    ...defaultBotConfig,
     momentum_min_body_atr: 0.2,
     momentum_close_location: 0.6,
     breakout_lookback: 5,
   } as BotConfig);
-
   const [unsavedChanges, setUnsavedChanges] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState('risk');
-
-  const clearTradeHistory = async () => {
-    if (!window.confirm('Clear all trade history?')) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/trading/trades/clear`, { method: 'DELETE' });
-      const data = await response.json();
-      if (data.success) {
-        alert('Trade history cleared');
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error(error);
-      alert('Failed to clear trade history');
-    }
-  };
+  const [activeSection, setActiveSection] = useState('filters');
 
   const loadConfig = async () => {
     try {
       const response = await fetch(`${API_BASE}/config`);
-      if (response.ok) {
-        const data = await response.json();
-        setConfig(prev => ({
-          ...prev,
-          ...defaultBotConfig,
-          ...data,
-          demo_mode: data.demo_mode ?? false,
-          momentum_min_body_atr: data.momentum_min_body_atr ?? 0.2,
-          momentum_close_location: data.momentum_close_location ?? 0.6,
-          breakout_lookback: data.breakout_lookback ?? 5,
-        }));
-      }
+      if (!response.ok) throw new Error(`Config load failed (${response.status})`);
+      const data = await response.json();
+      setConfig(prev => ({
+        ...prev,
+        ...defaultBotConfig,
+        ...data,
+        demo_mode: data.demo_mode ?? false,
+        momentum_min_body_atr: data.momentum_min_body_atr ?? 0.2,
+        momentum_close_location: data.momentum_close_location ?? 0.6,
+        breakout_lookback: data.breakout_lookback ?? 5,
+      }));
     } catch (error) {
       console.error('Failed to load bot config:', error);
+      setSaveStatus('error');
     } finally {
       setLoading(false);
     }
@@ -118,73 +103,27 @@ export function SettingsPanel() {
   }, []);
 
   const handleConfigChange = <K extends keyof BotConfig>(key: K, value: BotConfig[K]) => {
+    if (lockedFields.has(String(key))) return;
     setConfig(prev => ({ ...prev, [key]: value }));
     setUnsavedChanges(true);
+    setSaveStatus('idle');
   };
 
-  const handleDemoModeChange = async (value: boolean) => {
-    setConfig(prev => ({ ...prev, demo_mode: value }));
-
-    try {
-      const response = await fetch(`${API_BASE}/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ demo_mode: value }),
-      });
-      if (response.ok) setUnsavedChanges(false);
-    } catch (error) {
-      console.error('Failed to save demo_mode:', error);
-    }
+  const toggleFilter = (key: keyof BotConfig) => {
+    handleConfigChange(key, !config[key] as BotConfig[typeof key]);
   };
 
   const handleSave = async () => {
     setSaveStatus('saving');
-
     try {
       const updatePayload = {
+        ...config,
+        // These are deliberately sent unchanged and cannot be edited from this UI.
         risk_per_trade: config.risk_per_trade,
-        max_trades_per_day: config.max_trades_per_day,
         max_daily_loss: config.max_daily_loss,
         max_drawdown: config.max_drawdown,
-        confluence_threshold: config.confluence_threshold,
-        trading_pairs: config.trading_pairs,
-        allow_london: config.allow_london,
-        allow_ny: config.allow_ny,
-        demo_mode: config.demo_mode,
-
-        trend_filter: config.trend_filter,
-        adx_filter: config.adx_filter,
-        atr_filter: config.atr_filter,
-        atr_extension_filter: config.atr_extension_filter,
-        momentum_filter: config.momentum_filter,
-        spread_filter: config.spread_filter,
-        breakout_filter: config.breakout_filter,
-        entry_ema_filter: config.entry_ema_filter,
-
-        ema_fast: config.ema_fast,
-        ema_slow: config.ema_slow,
-        entry_ema: config.entry_ema,
-        adx_threshold: config.adx_threshold,
-        atr_ratio: config.atr_ratio,
-        atr_extension: config.atr_extension,
-        momentum_multiplier: config.momentum_multiplier,
-        momentum_min_body_atr: config.momentum_min_body_atr,
-        momentum_close_location: config.momentum_close_location,
-        max_spread: config.max_spread,
-        trend_tf: config.trend_tf,
-        entry_tf: config.entry_tf,
-        cooldown_minutes: config.cooldown_minutes,
+        max_trades_per_day: config.max_trades_per_day,
         max_open_positions: config.max_open_positions,
-        breakout_buffer: config.breakout_buffer,
-        breakout_lookback: config.breakout_lookback,
-
-        stop_loss: config.stop_loss,
-        take_profit: config.take_profit,
-
-        lot_size: config.lot_size,
-        deviation: config.deviation,
-        magic: config.magic,
-        order_comment: config.order_comment,
       };
 
       const response = await fetch(`${API_BASE}/config`, {
@@ -199,26 +138,39 @@ export function SettingsPanel() {
       }
 
       const data = await response.json();
-      if (data.config) {
-        setConfig(prev => ({ ...prev, ...data.config }));
-      }
-      setSaveStatus('saved');
+      if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
       setUnsavedChanges(false);
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      setSaveStatus('saved');
       await refreshBotStatus();
+      window.setTimeout(() => setSaveStatus('idle'), 2500);
     } catch (error) {
       console.error('Failed to save config:', error);
-      setSaveStatus('idle');
+      setSaveStatus('error');
     }
   };
 
-  if (loading) {
-    return <div className="text-center text-muted-foreground">Loading...</div>;
-  }
+  const filterToggle = (key: keyof BotConfig, label: string, description: string) => (
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
+      <div>
+        <Label className="font-semibold">{label}</Label>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => toggleFilter(key)}
+        aria-pressed={Boolean(config[key])}
+        className={`relative h-6 w-11 rounded-full transition ${config[key] ? 'bg-primary' : 'bg-muted'}`}
+      >
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${config[key] ? 'left-6' : 'left-1'}`} />
+      </button>
+    </div>
+  );
+
+  if (loading) return <div className="text-center text-muted-foreground py-10">Loading settings...</div>;
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">Bot Settings</h2>
           <p className="text-sm text-muted-foreground">Fast XAUUSD scalper configuration</p>
@@ -229,23 +181,216 @@ export function SettingsPanel() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 md:gap-6">
-        <Card className="w-full p-4 md:sticky md:top-4 overflow-x-auto">
-          <div className="flex overflow-x-auto gap-2 md:block md:space-y-2">
-            <button onClick={() => setActiveSection('risk')} className="whitespace-nowrap w-full text-left px-3 py-2 rounded-md hover:bg-secondary">💰 Risk</button>
-            <button onClick={() => setActiveSection('trading')} className="whitespace-nowrap w-full text-left px-3 py-2 rounded-md hover:bg-secondary">📊 Trading</button>
-            <button onClick={() => setActiveSection('filters')} className="whitespace-nowrap w-full text-left px-3 py-2 rounded-md hover:bg-secondary">🧩 Filters</button>
-            <button onClick={() => setActiveSection('execution')} className="whitespace-nowrap w-full text-left px-3 py-2 rounded-md hover:bg-secondary">⚡ Execution</button>
-            <button onClick={() => setActiveSection('advanced')} className="whitespace-nowrap w-full text-left px-3 py-2 rounded-md hover:bg-secondary">🔧 Advanced</button>
-            <button onClick={() => setActiveSection('quality')} className="whitespace-nowrap w-full text-left px-3 py-2 rounded-md hover:bg-secondary">🎯 Quality</button>
+      {saveStatus === 'error' && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Could not load or save the backend configuration. Check that the backend is running.</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex flex-col lg:grid lg:grid-cols-[220px_1fr] gap-4 lg:gap-6">
+        <Card className="w-full p-3 lg:p-4 lg:sticky lg:top-4 lg:self-start">
+          <div className="flex overflow-x-auto gap-2 lg:block lg:space-y-1">
+            {[
+              ['risk', '💰 Risk'],
+              ['trading', '📊 Trading'],
+              ['filters', '🧩 Filters'],
+              ['execution', '⚡ Execution'],
+              ['advanced', '🔧 Advanced'],
+              ['quality', '🎯 Quality'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveSection(value)}
+                className={`whitespace-nowrap w-full text-left px-3 py-2 rounded-md transition ${activeSection === value ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </Card>
 
-        <Card className="p-4 md:p-6">
-          <p className="text-sm text-muted-foreground">
-            Settings are loaded from and saved to the backend configuration API. The frontend payload includes every strategy, filter, execution, and risk field supported by the backend.
-          </p>
-        </Card>
+        <div className="space-y-6">
+          {activeSection === 'risk' && (
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold">Risk Management</h2>
+                <p className="text-sm text-muted-foreground">Protected experiment controls. These values cannot be changed by this settings panel.</p>
+              </div>
+              <Card className="p-4 md:p-6 space-y-5">
+                {[
+                  ['Risk Per Trade', `${config.risk_per_trade.toFixed(2)}%`, 'Percentage of balance risked per trade.'],
+                  ['Max Daily Loss', `${config.max_daily_loss.toFixed(1)}%`, 'Stops trading when the daily loss limit is reached.'],
+                  ['Max Drawdown', `${config.max_drawdown.toFixed(1)}%`, 'Maximum allowed account drawdown.'],
+                  ['Max Trades Per Day', String(config.max_trades_per_day), 'Protected daily trade limit.'],
+                  ['Max Open Positions', String(config.max_open_positions), 'Protected concurrent-position limit.'],
+                ].map(([label, value, description]) => (
+                  <div key={label} className="flex items-center justify-between gap-4 border-b last:border-b-0 pb-4 last:pb-0">
+                    <div>
+                      <Label className="font-semibold">{label}</Label>
+                      <p className="text-xs text-muted-foreground mt-1">{description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-lg"><Lock className="h-4 w-4" />{value}</div>
+                  </div>
+                ))}
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'trading' && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Trading</h2>
+              <Card className="p-4 md:p-6 space-y-6">
+                <div>
+                  <Label className="font-semibold">Trading Pairs</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Symbols enabled for the strategy.</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {['XAUUSDm', 'EURUSDm', 'GBPUSDm', 'USDJPYm', 'EURGBPm', 'USTECm', 'ETHUSD'].map(pair => (
+                      <label key={pair} className="flex items-center gap-2 text-sm border rounded-md p-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={config.trading_pairs.includes(pair)}
+                          onChange={e => handleConfigChange('trading_pairs', e.target.checked ? [...config.trading_pairs, pair] : config.trading_pairs.filter(p => p !== pair))}
+                        />
+                        {pair}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="font-semibold">Trading Sessions</Label>
+                  <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                    {[
+                      ['allow_london', '🇬🇧 London', '08:00–17:00 UTC'],
+                      ['allow_ny', '🗽 New York', '13:00–22:00 UTC'],
+                    ].map(([key, label, hours]) => (
+                      <label key={key} className="flex items-center justify-between border rounded-lg p-3">
+                        <span><span className="font-medium">{label}</span><span className="block text-xs text-muted-foreground">{hours}</span></span>
+                        <input type="checkbox" checked={Boolean(config[key as keyof BotConfig])} onChange={e => handleConfigChange(key as keyof BotConfig, e.target.checked as BotConfig[typeof key])} />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-primary/20 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <Label className="font-semibold">Session By-Pass</Label>
+                      <p className="text-xs text-muted-foreground mt-1">Allows signals outside the configured trading sessions for testing.</p>
+                    </div>
+                    <input type="checkbox" checked={config.demo_mode} onChange={e => handleConfigChange('demo_mode', e.target.checked)} className="h-5 w-5" />
+                  </div>
+                </div>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'filters' && (
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold">Entry Filters</h2>
+                <p className="text-sm text-muted-foreground">These are the primary parameters the experiment reviewer can tune.</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {filterToggle('trend_filter', 'Trend Filter', 'Require higher-timeframe trend alignment.')}
+                {filterToggle('entry_ema_filter', 'Entry EMA Filter', 'Require price to satisfy the entry EMA condition.')}
+                {filterToggle('adx_filter', 'ADX Filter', 'Filter weak-trend conditions using ADX.')}
+                {filterToggle('atr_filter', 'ATR Filter', 'Filter unsuitable volatility conditions.')}
+                {filterToggle('atr_extension_filter', 'ATR Extension Filter', 'Reject entries that are excessively extended.')}
+                {filterToggle('momentum_filter', 'Momentum Filter', 'Require sufficient candle momentum.')}
+                {filterToggle('spread_filter', 'Spread Filter', 'Reject entries when spread is too wide.')}
+                {filterToggle('breakout_filter', 'Breakout Filter', 'Require breakout confirmation when enabled.')}
+              </div>
+              <Card className="p-4 md:p-6 grid gap-6 md:grid-cols-2">
+                <div>
+                  <Label>Confluence Threshold</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Minimum signal score.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.confluence_threshold]} onValueChange={v => handleConfigChange('confluence_threshold', v[0])} min={0} max={100} step={1} /><b>{config.confluence_threshold}</b></div>
+                </div>
+                <div>
+                  <Label>ADX Threshold</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Minimum ADX strength.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.adx_threshold]} onValueChange={v => handleConfigChange('adx_threshold', v[0])} min={0} max={60} step={1} /><b>{config.adx_threshold}</b></div>
+                </div>
+                <div>
+                  <Label>ATR Ratio</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Minimum volatility ratio.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.atr_ratio]} onValueChange={v => handleConfigChange('atr_ratio', v[0])} min={0} max={3} step={0.05} /><b>{config.atr_ratio.toFixed(2)}</b></div>
+                </div>
+                <div>
+                  <Label>ATR Extension</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Maximum extension multiplier.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.atr_extension]} onValueChange={v => handleConfigChange('atr_extension', v[0])} min={0.5} max={5} step={0.1} /><b>{config.atr_extension.toFixed(1)}</b></div>
+                </div>
+                <div>
+                  <Label>Momentum Multiplier</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Momentum strength multiplier.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.momentum_multiplier]} onValueChange={v => handleConfigChange('momentum_multiplier', v[0])} min={0.5} max={3} step={0.1} /><b>{config.momentum_multiplier.toFixed(1)}</b></div>
+                </div>
+                <div>
+                  <Label>Minimum Body / ATR</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Minimum candle body relative to ATR.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.momentum_min_body_atr]} onValueChange={v => handleConfigChange('momentum_min_body_atr', v[0])} min={0} max={2} step={0.05} /><b>{config.momentum_min_body_atr.toFixed(2)}</b></div>
+                </div>
+                <div>
+                  <Label>Momentum Close Location</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Required candle close location.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.momentum_close_location]} onValueChange={v => handleConfigChange('momentum_close_location', v[0])} min={0.5} max={1} step={0.01} /><b>{config.momentum_close_location.toFixed(2)}</b></div>
+                </div>
+                <div>
+                  <Label>Maximum Spread</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Maximum allowed spread.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.max_spread]} onValueChange={v => handleConfigChange('max_spread', v[0])} min={0.01} max={1} step={0.01} /><b>{config.max_spread.toFixed(2)}</b></div>
+                </div>
+                <div>
+                  <Label>Breakout Buffer</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Buffer used for breakout confirmation.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.breakout_buffer]} onValueChange={v => handleConfigChange('breakout_buffer', v[0])} min={0} max={1} step={0.01} /><b>{config.breakout_buffer.toFixed(2)}</b></div>
+                </div>
+                <div>
+                  <Label>Breakout Lookback</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Number of candles used for breakout detection.</p>
+                  <div className="flex items-center gap-4"><Slider value={[config.breakout_lookback]} onValueChange={v => handleConfigChange('breakout_lookback', Math.round(v[0]))} min={1} max={50} step={1} /><b>{config.breakout_lookback}</b></div>
+                </div>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'execution' && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Execution</h2>
+              <Card className="p-4 md:p-6 grid gap-6 md:grid-cols-2">
+                <div><Label>Stop Loss</Label><p className="text-xs text-muted-foreground mb-3">Distance used for trade protection.</p><div className="flex items-center gap-4"><Slider value={[config.stop_loss]} onValueChange={v => handleConfigChange('stop_loss', v[0])} min={0.1} max={10} step={0.05} /><b>{config.stop_loss.toFixed(2)}</b></div></div>
+                <div><Label>Take Profit</Label><p className="text-xs text-muted-foreground mb-3">Target distance used by execution.</p><div className="flex items-center gap-4"><Slider value={[config.take_profit]} onValueChange={v => handleConfigChange('take_profit', v[0])} min={0.1} max={15} step={0.05} /><b>{config.take_profit.toFixed(2)}</b></div></div>
+                <div><Label>Cooldown Minutes</Label><p className="text-xs text-muted-foreground mb-3">Minimum time between entries.</p><div className="flex items-center gap-4"><Slider value={[config.cooldown_minutes]} onValueChange={v => handleConfigChange('cooldown_minutes', Math.round(v[0]))} min={0} max={30} step={1} /><b>{config.cooldown_minutes}</b></div></div>
+                <div><Label>Deviation</Label><p className="text-xs text-muted-foreground mb-3">Maximum execution deviation.</p><div className="flex items-center gap-4"><Slider value={[config.deviation]} onValueChange={v => handleConfigChange('deviation', Math.round(v[0]))} min={0} max={100} step={1} /><b>{config.deviation}</b></div></div>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'advanced' && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Advanced</h2>
+              <Card className="p-4 md:p-6 grid gap-6 md:grid-cols-2">
+                <div><Label>Fast EMA</Label><p className="text-xs text-muted-foreground mb-3">Fast trend/entry EMA period.</p><div className="flex items-center gap-4"><Slider value={[config.ema_fast]} onValueChange={v => handleConfigChange('ema_fast', Math.round(v[0]))} min={2} max={100} step={1} /><b>{config.ema_fast}</b></div></div>
+                <div><Label>Slow EMA</Label><p className="text-xs text-muted-foreground mb-3">Slow trend EMA period.</p><div className="flex items-center gap-4"><Slider value={[config.ema_slow]} onValueChange={v => handleConfigChange('ema_slow', Math.round(v[0]))} min={3} max={200} step={1} /><b>{config.ema_slow}</b></div></div>
+                <div><Label>Entry EMA</Label><p className="text-xs text-muted-foreground mb-3">EMA used for entry confirmation.</p><div className="flex items-center gap-4"><Slider value={[config.entry_ema]} onValueChange={v => handleConfigChange('entry_ema', Math.round(v[0]))} min={2} max={100} step={1} /><b>{config.entry_ema}</b></div></div>
+                <div><Label>Trend Timeframe</Label><Select value={config.trend_tf} onValueChange={v => handleConfigChange('trend_tf', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['M1', 'M5', 'M15', 'M30', 'H1'].map(tf => <SelectItem key={tf} value={tf}>{tf}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>Entry Timeframe</Label><Select value={config.entry_tf} onValueChange={v => handleConfigChange('entry_tf', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['M1', 'M5', 'M15'].map(tf => <SelectItem key={tf} value={tf}>{tf}</SelectItem>)}</SelectContent></Select></div>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'quality' && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Signal Quality</h2>
+              <Card className="p-4 md:p-6 space-y-6">
+                <div><Label>Confluence Threshold</Label><p className="text-xs text-muted-foreground mb-3">Minimum combined signal quality score.</p><div className="flex items-center gap-4"><Slider value={[config.confluence_threshold]} onValueChange={v => handleConfigChange('confluence_threshold', v[0])} min={0} max={100} step={1} /><b>{config.confluence_threshold}</b></div></div>
+                <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>The experiment reviewer can tune quality/filter parameters based on completed paper-trading cycles. Risk limits and maximum open positions remain protected.</AlertDescription></Alert>
+              </Card>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );
