@@ -1,9 +1,7 @@
 """Two-hour paper-trading supervisor.
 
-Run this process instead of `python main.py` for unattended paper testing.
-It keeps the API/bot process alive for two-hour experiment windows, records
-an immutable journal checkpoint, checks origin/main, and restarts on a new
-commit. Runtime JSON state is preserved across code updates.
+For flow testing, set PAPER_EXPERIMENT_SECONDS in the environment. The default
+is 7200 seconds (2 hours). The supervisor never enables live trading.
 """
 
 import os
@@ -17,7 +15,7 @@ from services.experiment_journal import finish_cycle
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
-INTERVAL_SECONDS = 7200
+INTERVAL_SECONDS = int(os.getenv("PAPER_EXPERIMENT_SECONDS", "7200"))
 RUNTIME_PREFIX = "BACKEND/storage/"
 
 
@@ -63,8 +61,7 @@ def runtime_status_lines():
     result = git("status", "--porcelain")
     if result.returncode != 0:
         return None, result.stderr.strip()
-    lines = [line for line in result.stdout.splitlines() if line]
-    return lines, None
+    return [line for line in result.stdout.splitlines() if line], None
 
 
 def update_to_remote():
@@ -120,7 +117,7 @@ def finalize_active_cycle():
 def main():
     print("=" * 70)
     print("PAPER TRADING SUPERVISOR STARTED")
-    print("Two-hour immutable experiment windows enabled")
+    print(f"Experiment window: {INTERVAL_SECONDS} seconds")
     print("GitHub main checked at every window boundary")
     print("=" * 70)
 
@@ -136,7 +133,7 @@ def main():
 
             remaining = INTERVAL_SECONDS - (time.monotonic() - window_started)
             if remaining > 0:
-                time.sleep(min(30, remaining))
+                time.sleep(min(10, remaining))
                 continue
 
             finalize_active_cycle()
