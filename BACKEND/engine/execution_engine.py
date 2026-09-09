@@ -58,29 +58,26 @@ class ExecutionEngine:
             print(f"[RISK] BLOCKED | {reason}")
             return False
 
-        # HARD PAPER-TRADING GUARD:
-        # The supervisor sets PAPER_TRADING=1 for experiment runs. In that
-        # mode we deliberately never call mt5.order_send(). This keeps the
-        # experiment observational/simulated even when MT5 is connected.
-        paper_trading = os.getenv("PAPER_TRADING", "0").strip() == "1"
-        if paper_trading:
-            print(
-                f"[PAPER] SIMULATED EXECUTION | {signal.get('signal')} | "
-                f"{signal.get('symbol')} | SL={signal.get('stop_loss')} | "
-                f"TP={signal.get('take_profit')}"
-            )
-            return {
-                "status": "PAPER_EXECUTED",
-                "paper": True,
-                "symbol": signal.get("symbol"),
-                "signal": signal.get("signal"),
-                "stop_loss": float(signal.get("stop_loss", 0.0)),
-                "take_profit": float(signal.get("take_profit", 0.0)),
-            }
-
         if not MT5Service.connect():
             print("[MT5] Connection failed")
             return False
+
+        account = mt5.account_info()
+        if account is None:
+            print("[MT5] Account unavailable")
+            return False
+
+        # Paper experiments use real MT5 orders on a DEMO account so we get
+        # genuine fills, spread/slippage and realized P&L without risking
+        # live capital. Refuse to send an order from the experiment runner
+        # unless MT5 explicitly reports a demo account.
+        paper_trading = os.getenv("PAPER_TRADING", "0").strip() == "1"
+        if paper_trading:
+            demo_trade_mode = getattr(mt5, "ACCOUNT_TRADE_MODE_DEMO", None)
+            account_trade_mode = getattr(account, "trade_mode", None)
+            if demo_trade_mode is None or account_trade_mode != demo_trade_mode:
+                print("[PAPER] BLOCKED | MT5 account is not confirmed as DEMO")
+                return False
 
         symbol = signal["symbol"]
         if not MT5Service.ensure_symbol(symbol):
@@ -95,8 +92,7 @@ class ExecutionEngine:
 
         tick = mt5.symbol_info_tick(symbol)
         info = mt5.symbol_info(symbol)
-        account = mt5.account_info()
-        if tick is None or info is None or account is None:
+        if tick is None or info is None:
             return False
 
         side = signal.get("signal")
