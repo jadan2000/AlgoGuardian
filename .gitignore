@@ -15,3 +15,6 @@ node_modules/
 
 credentials.json
 secrets.json
+
+# Local paper-trading experiment history (never committed as source code)
+BACKEND/storage/experiment_history/
