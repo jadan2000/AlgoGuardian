@@ -1,4 +1,5 @@
 import math
+import os
 
 import MetaTrader5 as mt5
 
@@ -57,6 +58,26 @@ class ExecutionEngine:
             print(f"[RISK] BLOCKED | {reason}")
             return False
 
+        # HARD PAPER-TRADING GUARD:
+        # The supervisor sets PAPER_TRADING=1 for experiment runs. In that
+        # mode we deliberately never call mt5.order_send(). This keeps the
+        # experiment observational/simulated even when MT5 is connected.
+        paper_trading = os.getenv("PAPER_TRADING", "0").strip() == "1"
+        if paper_trading:
+            print(
+                f"[PAPER] SIMULATED EXECUTION | {signal.get('signal')} | "
+                f"{signal.get('symbol')} | SL={signal.get('stop_loss')} | "
+                f"TP={signal.get('take_profit')}"
+            )
+            return {
+                "status": "PAPER_EXECUTED",
+                "paper": True,
+                "symbol": signal.get("symbol"),
+                "signal": signal.get("signal"),
+                "stop_loss": float(signal.get("stop_loss", 0.0)),
+                "take_profit": float(signal.get("take_profit", 0.0)),
+            }
+
         if not MT5Service.connect():
             print("[MT5] Connection failed")
             return False
@@ -93,7 +114,6 @@ class ExecutionEngine:
             print(f"[ORDER] Invalid signal side: {side}")
             return False
 
-        # Respect broker minimum stop distance.
         min_stop = float(getattr(info, "trade_stops_level", 0)) * float(info.point)
         if min_stop > 0:
             if abs(price - sl) < min_stop:
