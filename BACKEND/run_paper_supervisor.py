@@ -16,12 +16,13 @@ from pathlib import Path
 from services.experiment_journal import finish_cycle
 
 BASE = Path(__file__).resolve().parent
+ROOT = BASE.parent
 INTERVAL_SECONDS = 7200
-RUNTIME_PATHSPEC = "BACKEND/storage/"
+RUNTIME_PREFIX = "BACKEND/storage/"
 
 
 def git(*args):
-    return subprocess.run(["git", *args], cwd=BASE, text=True, capture_output=True)
+    return subprocess.run(["git", *args], cwd=ROOT, text=True, capture_output=True)
 
 
 def current_commit():
@@ -58,27 +59,34 @@ def stop_server(process):
         process.wait(timeout=10)
 
 
+def runtime_status_lines():
+    result = git("status", "--porcelain")
+    if result.returncode != 0:
+        return None, result.stderr.strip()
+    lines = [line for line in result.stdout.splitlines() if line]
+    return lines, None
+
+
 def update_to_remote():
-    # Runtime files are deliberately mutable and are not part of a source-code
-    # update. Stash only BACKEND/storage so config/trades/history survive pull.
-    status = git("status", "--porcelain", "--", RUNTIME_PATHSPEC)
-    if status.returncode != 0:
-        print(f"[SUPERVISOR] Could not inspect runtime state: {status.stderr.strip()}")
+    lines, error = runtime_status_lines()
+    if error:
+        print(f"[SUPERVISOR] Could not inspect git state: {error}")
         return False
 
-    had_runtime_changes = bool(status.stdout.strip())
+    runtime_changes = [line for line in lines if line[3:].startswith(RUNTIME_PREFIX)]
+    source_changes = [line for line in lines if not line[3:].startswith(RUNTIME_PREFIX)]
+
+    if source_changes:
+        print("[SUPERVISOR] Source tree has local changes; refusing automatic code update.")
+        print("[SUPERVISOR] Source changes:", source_changes)
+        return False
+
+    had_runtime_changes = bool(runtime_changes)
     if had_runtime_changes:
-        stash = git("stash", "push", "-m", "paper-runtime-before-update", "--", RUNTIME_PATHSPEC)
+        stash = git("stash", "push", "-m", "paper-runtime-before-update", "--", RUNTIME_PREFIX)
         if stash.returncode != 0:
             print(f"[SUPERVISOR] Runtime stash failed: {stash.stderr.strip()}")
             return False
-
-    source_status = git("status", "--porcelain", "--", ":!BACKEND/storage/")
-    if source_status.returncode != 0 or source_status.stdout.strip():
-        print("[SUPERVISOR] Source tree has local changes; refusing automatic code update.")
-        if had_runtime_changes:
-            git("stash", "pop")
-        return False
 
     pull = git("pull", "--ff-only", "origin", "main")
     if pull.returncode != 0:
