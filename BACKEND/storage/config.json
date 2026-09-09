@@ -35,7 +35,7 @@
   ],
   "allow_london": true,
   "allow_ny": true,
-  "demo_mode": false,
+  "demo_mode": true,
   "lot_size": 0.01,
   "deviation": 20,
   "magic": 20250620,
