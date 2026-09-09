@@ -1,7 +1,8 @@
-"""Two-hour paper-trading supervisor.
+"""Paper-trading supervisor.
 
-For flow testing, set PAPER_EXPERIMENT_SECONDS in the environment. The default
-is 7200 seconds (2 hours). The supervisor never enables live trading.
+Default experiment windows are 2 hours. For a temporary flow test, set
+PAPER_EXPERIMENT_SECONDS=600 (10 minutes). The supervisor always forces
+PAPER_TRADING=1 and never enables live trading.
 """
 
 import os
@@ -119,6 +120,7 @@ def main():
     print("PAPER TRADING SUPERVISOR STARTED")
     print(f"Experiment window: {INTERVAL_SECONDS} seconds")
     print("GitHub main checked at every window boundary")
+    print("PAPER_TRADING=1 enforced")
     print("=" * 70)
 
     process = start_server()
@@ -136,6 +138,7 @@ def main():
                 time.sleep(min(10, remaining))
                 continue
 
+            print("[SUPERVISOR] Experiment window complete; finalizing journal.")
             finalize_active_cycle()
             remote = latest_remote_commit()
             local = current_commit()
