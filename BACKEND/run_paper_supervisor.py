@@ -18,6 +18,7 @@ BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
 INTERVAL_SECONDS = int(os.getenv("PAPER_EXPERIMENT_SECONDS", "7200"))
 RUNTIME_PREFIX = "BACKEND/storage/"
+JOURNAL_GLOB = "BACKEND/storage/experiment_history/cycle_*.json"
 
 
 def git(*args):
@@ -111,8 +112,48 @@ def finalize_active_cycle():
         active = state.get("active_cycle")
         if active:
             finish_cycle(active)
+            return active
     except Exception as exc:
         print(f"[SUPERVISOR] Could not finalize journal: {exc}")
+    return None
+
+
+def publish_completed_cycles():
+    """Commit completed paper-experiment JSON files and push them to GitHub.
+
+    The journal directory remains ignored by default so runtime state is not
+    accidentally committed. Completed cycle files are explicitly force-added
+    here, making them retrievable by the remote GitHub connector for analysis.
+    """
+    add = git("add", "-f", JOURNAL_GLOB)
+    if add.returncode != 0:
+        print(f"[SUPERVISOR] Could not stage experiment history: {add.stderr.strip()}")
+        return False
+
+    staged = git("diff", "--cached", "--name-only", "--", JOURNAL_GLOB)
+    if staged.returncode != 0:
+        print(f"[SUPERVISOR] Could not inspect staged experiment history: {staged.stderr.strip()}")
+        return False
+
+    files = [line for line in staged.stdout.splitlines() if line.strip()]
+    if not files:
+        print("[SUPERVISOR] No new completed experiment files to publish.")
+        return True
+
+    message = f"[PAPER DATA] Publish {len(files)} completed experiment cycle(s)"
+    commit = git("commit", "-m", message)
+    if commit.returncode != 0:
+        print(f"[SUPERVISOR] Could not commit experiment history: {commit.stderr.strip()}")
+        return False
+
+    push = git("push", "origin", "main")
+    if push.returncode != 0:
+        print(f"[SUPERVISOR] GitHub publish failed: {push.stderr.strip()}")
+        print("[SUPERVISOR] Completed data remains committed locally and will be retried on the next window.")
+        return False
+
+    print(f"[SUPERVISOR] Published {len(files)} completed experiment file(s) to GitHub.")
+    return True
 
 
 def main():
@@ -120,6 +161,7 @@ def main():
     print("PAPER TRADING SUPERVISOR STARTED")
     print(f"Experiment window: {INTERVAL_SECONDS} seconds")
     print("GitHub main checked at every window boundary")
+    print("Completed experiment data is published to GitHub")
     print("PAPER_TRADING=1 enforced")
     print("=" * 70)
 
@@ -140,15 +182,22 @@ def main():
 
             print("[SUPERVISOR] Experiment window complete; finalizing journal.")
             finalize_active_cycle()
+
+            # Publish first so the experiment result becomes remotely
+            # retrievable. If pushing fails, do not pull/update code in the
+            # same boundary; the local commit will be retried next boundary.
+            published = publish_completed_cycles()
             remote = latest_remote_commit()
             local = current_commit()
             print(f"[SUPERVISOR] Local={local} Remote={remote}")
 
             stop_server(process)
-            if remote and local and remote != local:
+            if published and remote and local and remote != local:
                 update_to_remote()
+            elif not published:
+                print("[SUPERVISOR] Skipping automatic code update because experiment data was not published.")
             else:
-                print("[SUPERVISOR] No new commit; continuing current code version.")
+                print("[SUPERVISOR] No new code commit; continuing current code version.")
 
             process = start_server()
             window_started = time.monotonic()
