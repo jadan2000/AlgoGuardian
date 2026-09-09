@@ -1,9 +1,11 @@
-"""Autonomous paper-trading supervisor.
+"""Paper-trading supervisor with a GitHub review handshake.
 
-Runs one-hour paper experiments. At each boundary it stops the bot, publishes
-that experiment to GitHub, then waits for a new GitHub commit from the review
-loop. Once a new commit appears, it pulls the update and starts the next
-one-hour experiment. PAPER_TRADING is always forced to 1.
+The bot runs for one hour, stops, publishes the completed experiment, and then
+waits. While stopped it polls GitHub once per minute. A new REVIEW_COMPLETE
+marker is required before the next test starts. This prevents clock drift from
+causing a test to start before the completed cycle has been reviewed.
+
+PAPER_TRADING is always forced to 1.
 """
 
 import os
@@ -13,14 +15,14 @@ import sys
 import time
 from pathlib import Path
 
-from services.experiment_journal import finish_cycle
-
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
 INTERVAL_SECONDS = int(os.getenv("PAPER_EXPERIMENT_SECONDS", "3600"))
-POLL_SECONDS = int(os.getenv("PAPER_UPDATE_POLL_SECONDS", "60"))
+POLL_SECONDS = 60
 RUNTIME_PREFIX = "BACKEND/storage/"
-JOURNAL_GLOB = "BACKEND/storage/experiment_history/cycle_*.json"
+JOURNAL_DIR = "BACKEND/storage/experiment_history"
+CYCLE_GLOB = f"{JOURNAL_DIR}/cycle_*.json"
+REVIEW_GLOB = f"{JOURNAL_DIR}/review_*.json"
 
 
 def git(*args):
@@ -32,10 +34,16 @@ def current_commit():
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def fetch_remote():
+    result = git("fetch", "origin", "main", "--prune")
+    if result.returncode != 0:
+        print(f"[SUPERVISOR] git fetch failed: {result.stderr.strip()}")
+        return False
+    return True
+
+
 def latest_remote_commit():
-    fetch = git("fetch", "origin", "main", "--prune")
-    if fetch.returncode != 0:
-        print(f"[SUPERVISOR] git fetch failed: {fetch.stderr.strip()}")
+    if not fetch_remote():
         return None
     result = git("rev-parse", "origin/main")
     return result.stdout.strip() if result.returncode == 0 else None
@@ -76,7 +84,6 @@ def update_to_remote():
 
     runtime_changes = [line for line in lines if line[3:].startswith(RUNTIME_PREFIX)]
     source_changes = [line for line in lines if not line[3:].startswith(RUNTIME_PREFIX)]
-
     if source_changes:
         print("[SUPERVISOR] Source tree has local changes; refusing automatic code update.")
         print("[SUPERVISOR] Source changes:", source_changes)
@@ -109,68 +116,78 @@ def update_to_remote():
 
 def finalize_active_cycle():
     try:
-        from services.experiment_journal import _read, STATE_FILE
+        from services.experiment_journal import finish_cycle, _read, STATE_FILE
         state = _read(STATE_FILE, {})
         active = state.get("active_cycle")
         if active:
             finish_cycle(active)
-            return active
+            return int(active)
     except Exception as exc:
         print(f"[SUPERVISOR] Could not finalize journal: {exc}")
     return None
 
 
-def publish_completed_cycles():
-    """Commit completed paper-experiment JSON files and push them to GitHub."""
-    add = git("add", "-f", JOURNAL_GLOB)
+def publish_completed_cycle(cycle_id):
+    """Publish exactly the finished cycle; do not publish running/state files."""
+    if cycle_id is None:
+        return False
+
+    cycle_path = f"{JOURNAL_DIR}/cycle_{int(cycle_id):06d}.json"
+    add = git("add", "-f", cycle_path)
     if add.returncode != 0:
-        print(f"[SUPERVISOR] Could not stage experiment history: {add.stderr.strip()}")
+        print(f"[SUPERVISOR] Could not stage completed cycle: {add.stderr.strip()}")
         return False
 
-    staged = git("diff", "--cached", "--name-only", "--", JOURNAL_GLOB)
-    if staged.returncode != 0:
-        print(f"[SUPERVISOR] Could not inspect staged experiment history: {staged.stderr.strip()}")
+    staged = git("diff", "--cached", "--name-only", "--", cycle_path)
+    if staged.returncode != 0 or not staged.stdout.strip():
+        print("[SUPERVISOR] Completed cycle was not staged; refusing to continue.")
         return False
 
-    files = [line for line in staged.stdout.splitlines() if line.strip()]
-    if not files:
-        print("[SUPERVISOR] No new completed experiment files to publish.")
-        return True
-
-    message = f"[PAPER DATA] Publish {len(files)} completed experiment cycle(s)"
-    commit = git("commit", "-m", message)
+    commit = git("commit", "-m", f"PAPER DATA cycle {int(cycle_id):06d}")
     if commit.returncode != 0:
-        print(f"[SUPERVISOR] Could not commit experiment history: {commit.stderr.strip()}")
+        print(f"[SUPERVISOR] Could not commit completed cycle: {commit.stderr.strip()}")
         return False
 
     push = git("push", "origin", "main")
     if push.returncode != 0:
-        print(f"[SUPERVISOR] GitHub publish failed: {push.stderr.strip()}")
-        print("[SUPERVISOR] Completed data remains committed locally and will be retried on the next window.")
+        print(f"[SUPERVISOR] Could not publish cycle to GitHub: {push.stderr.strip()}")
         return False
 
-    print(f"[SUPERVISOR] Published {len(files)} completed experiment file(s) to GitHub.")
+    print(f"[SUPERVISOR] Published completed cycle {int(cycle_id):06d} to GitHub.")
     return True
 
 
-def wait_for_review_commit(baseline_commit):
-    """Poll GitHub until the review loop publishes a new commit."""
-    print("[SUPERVISOR] Waiting for the next review/update commit on GitHub...")
+def latest_review_for_cycle(cycle_id):
+    if cycle_id is None:
+        return None
+    result = git("ls-tree", "-r", "--name-only", "origin/main", JOURNAL_DIR)
+    if result.returncode != 0:
+        return None
+    prefix = f"{JOURNAL_DIR}/review_{int(cycle_id):06d}_"
+    matches = [line.strip() for line in result.stdout.splitlines() if line.strip().startswith(prefix) and line.strip().endswith(".json")]
+    return matches[-1] if matches else None
+
+
+def wait_for_review(cycle_id):
+    """Wait until the remote contains a review marker for this exact cycle."""
+    print(f"[SUPERVISOR] Waiting for review of cycle {int(cycle_id):06d}...")
     while True:
         remote = latest_remote_commit()
-        if remote and remote != baseline_commit:
-            print(f"[SUPERVISOR] New remote commit detected: {remote}")
-            return remote
-        print(f"[SUPERVISOR] No update yet; checking again in {POLL_SECONDS}s.")
+        if remote:
+            review = latest_review_for_cycle(cycle_id)
+            if review:
+                print(f"[SUPERVISOR] Review detected: {review}")
+                return remote
+        print("[SUPERVISOR] No review yet; checking GitHub again in 60 seconds.")
         time.sleep(POLL_SECONDS)
 
 
 def main():
     print("=" * 70)
-    print("AUTONOMOUS PAPER TRADING SUPERVISOR STARTED")
+    print("PAPER TRADING SUPERVISOR STARTED")
     print(f"Experiment window: {INTERVAL_SECONDS} seconds")
-    print(f"GitHub update polling: every {POLL_SECONDS} seconds while stopped")
-    print("Flow: TEST -> STOP -> PUBLISH -> WAIT FOR REVIEW COMMIT -> PULL -> TEST")
+    print("After each window: STOP -> PUBLISH -> WAIT FOR REVIEW -> PULL -> START")
+    print("GitHub is polled every 60 seconds while waiting")
     print("PAPER_TRADING=1 enforced")
     print("=" * 70)
 
@@ -189,33 +206,32 @@ def main():
                 time.sleep(min(10, remaining))
                 continue
 
-            print("[SUPERVISOR] Experiment window complete; finalizing journal.")
-            finalize_active_cycle()
+            print("[SUPERVISOR] Experiment window complete; STOPPING server.")
+            stop_server(process)
 
-            if not publish_completed_cycles():
-                print("[SUPERVISOR] Could not publish this cycle; stopping for safety.")
-                stop_server(process)
-                while not publish_completed_cycles():
+            cycle_id = finalize_active_cycle()
+            if not publish_completed_cycle(cycle_id):
+                print("[SUPERVISOR] Publish failed. Staying stopped; will retry every minute.")
+                while not publish_completed_cycle(cycle_id):
                     time.sleep(POLL_SECONDS)
 
-            # The bot stays stopped until the external review loop publishes a
-            # new commit. This prevents it from starting another test against
-            # stale code before the analysis/update has happened.
-            stop_server(process)
-            baseline = current_commit()
-            wait_for_review_commit(baseline)
+            # Do not start another test until a reviewer has acknowledged this
+            # exact completed cycle. A code update and a no-change review both
+            # satisfy the handshake via review_XXXXXX_*.json.
+            wait_for_review(cycle_id)
 
+            print("[SUPERVISOR] Review complete; pulling latest code before restart.")
             if not update_to_remote():
-                print("[SUPERVISOR] Update failed; keeping bot stopped and retrying in 60s.")
+                print("[SUPERVISOR] Pull failed. Staying stopped; retrying in 60 seconds.")
                 while not update_to_remote():
                     time.sleep(POLL_SECONDS)
 
             process = start_server()
             window_started = time.monotonic()
-            print(f"[SUPERVISOR] New one-hour window started on commit {current_commit()}")
+            print(f"[SUPERVISOR] New one-hour test started on commit {current_commit()}")
 
     except KeyboardInterrupt:
-        print("[SUPERVISOR] Stopping autonomous paper trading supervisor...")
+        print("[SUPERVISOR] Stopping paper trading supervisor...")
     finally:
         stop_server(process)
 
