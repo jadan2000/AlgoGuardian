@@ -2,13 +2,8 @@
 
 Run this process instead of `python main.py` for unattended paper testing.
 It keeps the API/bot process alive for two-hour experiment windows, records
-an immutable journal checkpoint, checks origin/main, and only restarts after a
-new clean commit is available. It never deploys to live trading.
-
-Requirements:
-- the working tree must be clean for automatic updates
-- git authentication for the private repository must already work locally
-- run from BACKEND or with this file's directory as the working directory
+an immutable journal checkpoint, checks origin/main, and restarts on a new
+commit. Runtime JSON state is preserved across code updates.
 """
 
 import os
@@ -22,12 +17,11 @@ from services.experiment_journal import finish_cycle
 
 BASE = Path(__file__).resolve().parent
 INTERVAL_SECONDS = 7200
+RUNTIME_PATHSPEC = "BACKEND/storage/"
 
 
 def git(*args):
-    return subprocess.run(
-        ["git", *args], cwd=BASE, text=True, capture_output=True
-    )
+    return subprocess.run(["git", *args], cwd=BASE, text=True, capture_output=True)
 
 
 def current_commit():
@@ -42,11 +36,6 @@ def latest_remote_commit():
         return None
     result = git("rev-parse", "origin/main")
     return result.stdout.strip() if result.returncode == 0 else None
-
-
-def working_tree_clean():
-    result = git("status", "--porcelain")
-    return result.returncode == 0 and not result.stdout.strip()
 
 
 def start_server():
@@ -70,26 +59,65 @@ def stop_server(process):
 
 
 def update_to_remote():
-    if not working_tree_clean():
-        print("[SUPERVISOR] Working tree is not clean; refusing automatic git pull.")
+    # Runtime files are deliberately mutable and are not part of a source-code
+    # update. Stash only BACKEND/storage so config/trades/history survive pull.
+    status = git("status", "--porcelain", "--", RUNTIME_PATHSPEC)
+    if status.returncode != 0:
+        print(f"[SUPERVISOR] Could not inspect runtime state: {status.stderr.strip()}")
         return False
-    result = git("pull", "--ff-only", "origin", "main")
-    if result.returncode != 0:
-        print(f"[SUPERVISOR] git pull failed: {result.stderr.strip()}")
+
+    had_runtime_changes = bool(status.stdout.strip())
+    if had_runtime_changes:
+        stash = git("stash", "push", "-m", "paper-runtime-before-update", "--", RUNTIME_PATHSPEC)
+        if stash.returncode != 0:
+            print(f"[SUPERVISOR] Runtime stash failed: {stash.stderr.strip()}")
+            return False
+
+    source_status = git("status", "--porcelain", "--", ":!BACKEND/storage/")
+    if source_status.returncode != 0 or source_status.stdout.strip():
+        print("[SUPERVISOR] Source tree has local changes; refusing automatic code update.")
+        if had_runtime_changes:
+            git("stash", "pop")
         return False
-    print("[SUPERVISOR] Updated to latest origin/main.")
+
+    pull = git("pull", "--ff-only", "origin", "main")
+    if pull.returncode != 0:
+        print(f"[SUPERVISOR] git pull failed: {pull.stderr.strip()}")
+        if had_runtime_changes:
+            git("stash", "pop")
+        return False
+
+    if had_runtime_changes:
+        restore = git("stash", "pop")
+        if restore.returncode != 0:
+            print("[SUPERVISOR] WARNING: runtime stash could not be restored automatically.")
+            print(restore.stderr.strip())
+            return False
+
+    print("[SUPERVISOR] Updated to latest origin/main; runtime state preserved.")
     return True
+
+
+def finalize_active_cycle():
+    try:
+        from services.experiment_journal import _read, STATE_FILE
+        state = _read(STATE_FILE, {})
+        active = state.get("active_cycle")
+        if active:
+            finish_cycle(active)
+    except Exception as exc:
+        print(f"[SUPERVISOR] Could not finalize journal: {exc}")
 
 
 def main():
     print("=" * 70)
     print("PAPER TRADING SUPERVISOR STARTED")
     print("Two-hour immutable experiment windows enabled")
+    print("GitHub main checked at every window boundary")
     print("=" * 70)
 
     process = start_server()
     window_started = time.monotonic()
-    last_commit = current_commit()
 
     try:
         while True:
@@ -97,39 +125,26 @@ def main():
                 print(f"[SUPERVISOR] Server exited with code {process.returncode}; restarting.")
                 process = start_server()
                 window_started = time.monotonic()
-                last_commit = current_commit()
 
             remaining = INTERVAL_SECONDS - (time.monotonic() - window_started)
             if remaining > 0:
                 time.sleep(min(30, remaining))
                 continue
 
-            # Complete the current journal window before changing code.
-            try:
-                from services.experiment_journal import _read, STATE_FILE
-                state = _read(STATE_FILE, {})
-                active = state.get("active_cycle")
-                if active:
-                    finish_cycle(active)
-            except Exception as exc:
-                print(f"[SUPERVISOR] Could not finalize journal: {exc}")
-
+            finalize_active_cycle()
             remote = latest_remote_commit()
             local = current_commit()
             print(f"[SUPERVISOR] Local={local} Remote={remote}")
 
             stop_server(process)
-
             if remote and local and remote != local:
-                if not update_to_remote():
-                    print("[SUPERVISOR] Keeping current version because update was unsafe/failed.")
+                update_to_remote()
             else:
-                print("[SUPERVISOR] No new commit; starting another window on the same version.")
+                print("[SUPERVISOR] No new commit; continuing current code version.")
 
             process = start_server()
             window_started = time.monotonic()
-            last_commit = current_commit()
-            print(f"[SUPERVISOR] New window started on commit {last_commit}")
+            print(f"[SUPERVISOR] New window started on commit {current_commit()}")
 
     except KeyboardInterrupt:
         print("[SUPERVISOR] Stopping paper trading supervisor...")
