@@ -1,8 +1,9 @@
-"""Paper-trading supervisor.
+"""Autonomous paper-trading supervisor.
 
-Default experiment windows are 2 hours. For a temporary flow test, set
-PAPER_EXPERIMENT_SECONDS=600 (10 minutes). The supervisor always forces
-PAPER_TRADING=1 and never enables live trading.
+Runs one-hour paper experiments. At each boundary it stops the bot, publishes
+that experiment to GitHub, then waits for a new GitHub commit from the review
+loop. Once a new commit appears, it pulls the update and starts the next
+one-hour experiment. PAPER_TRADING is always forced to 1.
 """
 
 import os
@@ -16,7 +17,8 @@ from services.experiment_journal import finish_cycle
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
-INTERVAL_SECONDS = int(os.getenv("PAPER_EXPERIMENT_SECONDS", "7200"))
+INTERVAL_SECONDS = int(os.getenv("PAPER_EXPERIMENT_SECONDS", "3600"))
+POLL_SECONDS = int(os.getenv("PAPER_UPDATE_POLL_SECONDS", "60"))
 RUNTIME_PREFIX = "BACKEND/storage/"
 JOURNAL_GLOB = "BACKEND/storage/experiment_history/cycle_*.json"
 
@@ -101,7 +103,7 @@ def update_to_remote():
             print(restore.stderr.strip())
             return False
 
-    print("[SUPERVISOR] Updated to latest origin/main; runtime state preserved.")
+    print("[SUPERVISOR] Pulled latest origin/main; runtime state preserved.")
     return True
 
 
@@ -119,12 +121,7 @@ def finalize_active_cycle():
 
 
 def publish_completed_cycles():
-    """Commit completed paper-experiment JSON files and push them to GitHub.
-
-    The journal directory remains ignored by default so runtime state is not
-    accidentally committed. Completed cycle files are explicitly force-added
-    here, making them retrievable by the remote GitHub connector for analysis.
-    """
+    """Commit completed paper-experiment JSON files and push them to GitHub."""
     add = git("add", "-f", JOURNAL_GLOB)
     if add.returncode != 0:
         print(f"[SUPERVISOR] Could not stage experiment history: {add.stderr.strip()}")
@@ -156,12 +153,24 @@ def publish_completed_cycles():
     return True
 
 
+def wait_for_review_commit(baseline_commit):
+    """Poll GitHub until the review loop publishes a new commit."""
+    print("[SUPERVISOR] Waiting for the next review/update commit on GitHub...")
+    while True:
+        remote = latest_remote_commit()
+        if remote and remote != baseline_commit:
+            print(f"[SUPERVISOR] New remote commit detected: {remote}")
+            return remote
+        print(f"[SUPERVISOR] No update yet; checking again in {POLL_SECONDS}s.")
+        time.sleep(POLL_SECONDS)
+
+
 def main():
     print("=" * 70)
-    print("PAPER TRADING SUPERVISOR STARTED")
+    print("AUTONOMOUS PAPER TRADING SUPERVISOR STARTED")
     print(f"Experiment window: {INTERVAL_SECONDS} seconds")
-    print("GitHub main checked at every window boundary")
-    print("Completed experiment data is published to GitHub")
+    print(f"GitHub update polling: every {POLL_SECONDS} seconds while stopped")
+    print("Flow: TEST -> STOP -> PUBLISH -> WAIT FOR REVIEW COMMIT -> PULL -> TEST")
     print("PAPER_TRADING=1 enforced")
     print("=" * 70)
 
@@ -183,28 +192,30 @@ def main():
             print("[SUPERVISOR] Experiment window complete; finalizing journal.")
             finalize_active_cycle()
 
-            # Publish first so the experiment result becomes remotely
-            # retrievable. If pushing fails, do not pull/update code in the
-            # same boundary; the local commit will be retried next boundary.
-            published = publish_completed_cycles()
-            remote = latest_remote_commit()
-            local = current_commit()
-            print(f"[SUPERVISOR] Local={local} Remote={remote}")
+            if not publish_completed_cycles():
+                print("[SUPERVISOR] Could not publish this cycle; stopping for safety.")
+                stop_server(process)
+                while not publish_completed_cycles():
+                    time.sleep(POLL_SECONDS)
 
+            # The bot stays stopped until the external review loop publishes a
+            # new commit. This prevents it from starting another test against
+            # stale code before the analysis/update has happened.
             stop_server(process)
-            if published and remote and local and remote != local:
-                update_to_remote()
-            elif not published:
-                print("[SUPERVISOR] Skipping automatic code update because experiment data was not published.")
-            else:
-                print("[SUPERVISOR] No new code commit; continuing current code version.")
+            baseline = current_commit()
+            wait_for_review_commit(baseline)
+
+            if not update_to_remote():
+                print("[SUPERVISOR] Update failed; keeping bot stopped and retrying in 60s.")
+                while not update_to_remote():
+                    time.sleep(POLL_SECONDS)
 
             process = start_server()
             window_started = time.monotonic()
-            print(f"[SUPERVISOR] New window started on commit {current_commit()}")
+            print(f"[SUPERVISOR] New one-hour window started on commit {current_commit()}")
 
     except KeyboardInterrupt:
-        print("[SUPERVISOR] Stopping paper trading supervisor...")
+        print("[SUPERVISOR] Stopping autonomous paper trading supervisor...")
     finally:
         stop_server(process)
 
