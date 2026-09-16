@@ -10,6 +10,7 @@ DEFAULT_CONFIG = {
     "max_daily_loss": 2.0,
     "max_drawdown": 5.0,
     "max_trades_per_day": 8,
+    "max_trades_enabled": False,
     "confluence_threshold": 60,
     "entry_ema_filter": True,
     "trend_filter": True,
@@ -78,6 +79,7 @@ BOOL_KEYS = {
     "entry_ema_filter", "trend_filter", "adx_filter", "atr_filter",
     "atr_extension_filter", "momentum_filter", "spread_filter",
     "breakout_filter", "allow_london", "allow_ny", "demo_mode",
+    "max_trades_enabled",
 }
 
 TEXT_KEYS = {"trend_tf", "entry_tf", "order_comment"}
