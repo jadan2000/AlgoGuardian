@@ -14,6 +14,7 @@ interface BotConfig {
   is_active?: boolean;
   risk_per_trade: number;
   max_trades_per_day: number;
+  max_trades_enabled: boolean;
   max_daily_loss: number;
   max_drawdown: number;
   confluence_threshold: number;
@@ -57,7 +58,6 @@ const lockedFields = new Set([
   'risk_per_trade',
   'max_daily_loss',
   'max_drawdown',
-  'max_trades_per_day',
   'max_open_positions',
 ]);
 
@@ -67,6 +67,7 @@ export function SettingsPanel() {
     ...defaultBotConfig,
     is_active: false,
     demo_mode: false,
+    max_trades_enabled: false,
     momentum_min_body_atr: 0.2,
     momentum_close_location: 0.6,
     breakout_lookback: 5,
@@ -86,6 +87,7 @@ export function SettingsPanel() {
         ...defaultBotConfig,
         ...data,
         demo_mode: data.demo_mode ?? false,
+        max_trades_enabled: data.max_trades_enabled ?? false,
         momentum_min_body_atr: data.momentum_min_body_atr ?? 0.2,
         momentum_close_location: data.momentum_close_location ?? 0.6,
         breakout_lookback: data.breakout_lookback ?? 5,
@@ -118,11 +120,10 @@ export function SettingsPanel() {
     try {
       const updatePayload = {
         ...config,
-        // These are deliberately sent unchanged and cannot be edited from this UI.
+        // Protected risk controls remain unchanged by this UI.
         risk_per_trade: config.risk_per_trade,
         max_daily_loss: config.max_daily_loss,
         max_drawdown: config.max_drawdown,
-        max_trades_per_day: config.max_trades_per_day,
         max_open_positions: config.max_open_positions,
       };
 
@@ -162,6 +163,28 @@ export function SettingsPanel() {
         className={`relative h-6 w-11 rounded-full transition ${config[key] ? 'bg-primary' : 'bg-muted'}`}
       >
         <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${config[key] ? 'left-6' : 'left-1'}`} />
+      </button>
+    </div>
+  );
+
+  const maxTradesToggle = (
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+      <div>
+        <Label className="font-semibold">Max Trades Per Day</Label>
+        <p className="text-xs text-muted-foreground mt-1">
+          {config.max_trades_enabled
+            ? `Stop new trades after ${config.max_trades_per_day} entries today.`
+            : 'No daily trade-count limit. Other risk protections remain active.'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => handleConfigChange('max_trades_enabled', !config.max_trades_enabled)}
+        aria-label="Toggle maximum trades per day"
+        aria-pressed={config.max_trades_enabled}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition ${config.max_trades_enabled ? 'bg-primary' : 'bg-muted'}`}
+      >
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${config.max_trades_enabled ? 'left-6' : 'left-1'}`} />
       </button>
     </div>
   );
@@ -216,17 +239,16 @@ export function SettingsPanel() {
             <section className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold">Risk Management</h2>
-                <p className="text-sm text-muted-foreground">Protected experiment controls. These values cannot be changed by this settings panel.</p>
+                <p className="text-sm text-muted-foreground">Protected account controls plus an optional daily trade-count limit.</p>
               </div>
               <Card className="p-4 md:p-6 space-y-5">
                 {[
                   ['Risk Per Trade', `${config.risk_per_trade.toFixed(2)}%`, 'Percentage of balance risked per trade.'],
                   ['Max Daily Loss', `${config.max_daily_loss.toFixed(1)}%`, 'Stops trading when the daily loss limit is reached.'],
                   ['Max Drawdown', `${config.max_drawdown.toFixed(1)}%`, 'Maximum allowed account drawdown.'],
-                  ['Max Trades Per Day', String(config.max_trades_per_day), 'Protected daily trade limit.'],
                   ['Max Open Positions', String(config.max_open_positions), 'Protected concurrent-position limit.'],
                 ].map(([label, value, description]) => (
-                  <div key={label} className="flex items-center justify-between gap-4 border-b last:border-b-0 pb-4 last:pb-0">
+                  <div key={label} className="flex items-center justify-between gap-4 border-b pb-4">
                     <div>
                       <Label className="font-semibold">{label}</Label>
                       <p className="text-xs text-muted-foreground mt-1">{description}</p>
@@ -234,6 +256,24 @@ export function SettingsPanel() {
                     <div className="flex items-center gap-2 font-bold text-lg"><Lock className="h-4 w-4" />{value}</div>
                   </div>
                 ))}
+                {maxTradesToggle}
+                <div className="flex items-center justify-between gap-4 border-b last:border-b-0 pb-4 last:pb-0">
+                  <div>
+                    <Label className="font-semibold">Daily Trade Limit</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Maximum entries allowed when the switch above is ON.</p>
+                  </div>
+                  <div className="flex items-center gap-4 min-w-[180px]">
+                    <Slider
+                      value={[config.max_trades_per_day]}
+                      onValueChange={v => handleConfigChange('max_trades_per_day', Math.round(v[0]))}
+                      min={1}
+                      max={100}
+                      step={1}
+                      disabled={!config.max_trades_enabled}
+                    />
+                    <b className={!config.max_trades_enabled ? 'text-muted-foreground' : ''}>{config.max_trades_per_day}</b>
+                  </div>
+                </div>
               </Card>
             </section>
           )}
