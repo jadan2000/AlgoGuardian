@@ -35,13 +35,18 @@ class RiskManager:
         deals = mt5.history_deals_get(day_start, now) or []
 
         entry_deals = [
-            deal for deal in deals
+            deal
+            for deal in deals
             if getattr(deal, "entry", None) in (mt5.DEAL_ENTRY_IN, mt5.DEAL_ENTRY_INOUT)
             and float(getattr(deal, "volume", 0.0)) > 0
             and getattr(deal, "symbol", "") == symbol
         ]
+
+        # The daily trade limit is optional. When disabled, the configured
+        # max_trades_per_day value is ignored completely.
+        max_trades_enabled = bool(config.get("max_trades_enabled", False))
         max_daily_trades = int(config.get("max_trades_per_day", 0))
-        if max_daily_trades > 0 and len(entry_deals) >= max_daily_trades:
+        if max_trades_enabled and max_daily_trades > 0 and len(entry_deals) >= max_daily_trades:
             return False, "MAX TRADES PER DAY"
 
         closed_pnl = sum(
