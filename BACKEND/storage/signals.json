@@ -1,127 +1,122 @@
 [
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:07:32"
-  },
-  {
-    "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:07:37"
-  },
-  {
-    "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:07:42"
-  },
-  {
-    "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:07:47"
-  },
-  {
-    "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:07:52"
-  },
-  {
-    "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:07:57"
-  },
-  {
-    "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:08:02"
-  },
-  {
-    "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:08:07"
-  },
-  {
-    "status": "EXECUTED",
-    "signal": "SELL",
     "symbol": "XAUUSDm",
-    "reason": "EMA PULLBACK",
-    "confidence": 95,
-    "stop_loss": 1,
-    "take_profit": 1.2,
-    "timestamp": "2026-09-08 13:08:12"
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:26:44"
   },
   {
-    "status": "EXECUTED",
-    "signal": "SELL",
+    "status": "BLOCKED",
     "symbol": "XAUUSDm",
-    "reason": "EMA PULLBACK",
-    "confidence": 95,
-    "stop_loss": 1,
-    "take_profit": 1.2,
-    "timestamp": "2026-09-08 13:08:17"
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:26:49"
   },
   {
-    "status": "EXECUTED",
-    "signal": "SELL",
+    "status": "BLOCKED",
     "symbol": "XAUUSDm",
-    "reason": "EMA PULLBACK",
-    "confidence": 95,
-    "stop_loss": 1,
-    "take_profit": 1.2,
-    "timestamp": "2026-09-08 13:08:22"
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:26:54"
   },
   {
-    "status": "EXECUTED",
-    "signal": "SELL",
+    "status": "BLOCKED",
     "symbol": "XAUUSDm",
-    "reason": "EMA PULLBACK",
-    "confidence": 95,
-    "stop_loss": 1,
-    "take_profit": 1.2,
-    "timestamp": "2026-09-08 13:08:28"
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:26:59"
   },
   {
-    "status": "EXECUTED",
-    "signal": "SELL",
+    "status": "BLOCKED",
     "symbol": "XAUUSDm",
-    "reason": "EMA PULLBACK",
-    "confidence": 95,
-    "stop_loss": 1,
-    "take_profit": 1.2,
-    "timestamp": "2026-09-08 13:08:33"
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:04"
   },
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:08:38"
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:09"
   },
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:08:43"
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:14"
   },
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:08:48"
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:20"
   },
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:08:53"
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:25"
   },
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:08:58"
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:30"
   },
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:09:03"
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:35"
   },
   {
     "status": "BLOCKED",
-    "reason": "COOLDOWN AFTER LOSS",
-    "timestamp": "2026-09-08 13:09:08"
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:40"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:45"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:50"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:27:55"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:28:00"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:28:05"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:28:10"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:28:15"
+  },
+  {
+    "status": "BLOCKED",
+    "symbol": "XAUUSDm",
+    "reason": "SPREAD",
+    "timestamp": "2026-09-09 14:28:20"
   }
 ]
