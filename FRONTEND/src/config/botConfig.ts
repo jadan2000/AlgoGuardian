@@ -3,6 +3,7 @@ export const defaultBotConfig = {
   risk_per_trade: 0.5,
   max_daily_loss: 2.0,
   max_drawdown: 5.0,
+  max_trades_enabled: false,
 
   // Trading
   max_trades_per_day: 8,
