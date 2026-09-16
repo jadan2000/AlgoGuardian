@@ -3,11 +3,11 @@
   "max_daily_loss": 2.0,
   "max_drawdown": 5.0,
   "max_trades_per_day": 8,
-  "confluence_threshold": 60,
-  "entry_ema_filter": true,
+  "confluence_threshold": 60.0,
+  "entry_ema_filter": false,
   "trend_filter": true,
-  "adx_filter": true,
-  "atr_filter": true,
+  "adx_filter": false,
+  "atr_filter": false,
   "atr_extension_filter": false,
   "momentum_filter": true,
   "spread_filter": true,
@@ -15,7 +15,7 @@
   "ema_fast": 9,
   "ema_slow": 21,
   "entry_ema": 9,
-  "adx_threshold": 18,
+  "adx_threshold": 18.0,
   "atr_ratio": 0.65,
   "atr_extension": 1.5,
   "momentum_multiplier": 1.1,
@@ -26,8 +26,8 @@
   "entry_tf": "M1",
   "breakout_buffer": 0.1,
   "breakout_lookback": 5,
-  "stop_loss": 1.5,
-  "take_profit": 2.25,
+  "stop_loss": 1.2,
+  "take_profit": 1.8,
   "cooldown_minutes": 3,
   "max_open_positions": 1,
   "trading_pairs": [
@@ -39,5 +39,6 @@
   "lot_size": 0.01,
   "deviation": 20,
   "magic": 20250620,
-  "order_comment": "AlgoGuardian"
+  "order_comment": "AlgoGuardian",
+  "is_active": false
 }
