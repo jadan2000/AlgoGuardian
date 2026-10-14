@@ -39,11 +39,10 @@ class RiskManager:
             for deal in deals
             if getattr(deal, "entry", None) in (mt5.DEAL_ENTRY_IN, mt5.DEAL_ENTRY_INOUT)
             and float(getattr(deal, "volume", 0.0)) > 0
-            and getattr(deal, "symbol", "") == symbol
         ]
 
-        # The daily trade limit is optional. When disabled, the configured
-        # max_trades_per_day value is ignored completely.
+        # The daily trade limit is account-wide across all symbols. When
+        # disabled, max_trades_per_day is ignored completely.
         max_trades_enabled = bool(config.get("max_trades_enabled", False))
         max_daily_trades = int(config.get("max_trades_per_day", 0))
         if max_trades_enabled and max_daily_trades > 0 and len(entry_deals) >= max_daily_trades:
