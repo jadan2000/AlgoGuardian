@@ -161,18 +161,16 @@ class ExecutionEngine:
             if tick_size > 0 and tick_value > 0:
                 min_lot_risk = (stop_distance / tick_size) * tick_value * min_volume
             risk_budget = float(account.balance) * risk_percent / 100.0 if risk_percent > 0 else None
-            print(
+            volume_message = (
                 "[ORDER] BLOCKED | Calculated volume is below broker minimum; "
                 "refusing to increase it automatically"
                 f" | requested_volume={requested_volume:.8f}"
                 f" | broker_min_volume={min_volume}"
                 f" | configured_lot_cap={config['lot_size']}"
-                f" | risk_budget={risk_budget:.2f}" if risk_budget is not None else
-                "[ORDER] BLOCKED | Calculated volume is below broker minimum; refusing to increase it automatically"
-                f" | requested_volume={requested_volume:.8f}"
-                f" | broker_min_volume={min_volume}"
-                f" | configured_lot_cap={config['lot_size']}"
             )
+            if risk_budget is not None:
+                volume_message += f" | risk_budget={risk_budget:.2f}"
+            print(volume_message)
             if min_lot_risk is not None:
                 print(f"[ORDER] Minimum-lot estimated stop-loss risk: {min_lot_risk:.2f} account currency")
             return False
