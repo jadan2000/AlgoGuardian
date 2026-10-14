@@ -53,7 +53,10 @@ class SignalEngine:
         cooldown_minutes = float(config["cooldown_minutes"])
         if cooldown_minutes > 0:
             now = time.time()
-            deals = mt5.history_deals_get(now - cooldown_minutes * 60, now) or []
+            deals = mt5.history_deals_get(now - cooldown_minutes * 60, now)
+            if deals is None:
+                self.log("BLOCKED", f"TRADE HISTORY UNAVAILABLE FOR COOLDOWN: {mt5.last_error()}")
+                return {"status": "BLOCKED", "reason": "TRADE HISTORY UNAVAILABLE"}
             entries = [d for d in deals if getattr(d, "entry", None) in (mt5.DEAL_ENTRY_IN, mt5.DEAL_ENTRY_INOUT) and float(getattr(d, "volume", 0.0)) > 0]
             if entries and now - float(max(entries, key=lambda d: d.time).time) < cooldown_minutes * 60:
                 return {"status": "BLOCKED", "reason": "COOLDOWN BETWEEN ENTRIES"}
