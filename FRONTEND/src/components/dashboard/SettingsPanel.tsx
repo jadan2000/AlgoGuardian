@@ -11,7 +11,6 @@ import { defaultBotConfig } from '@/config/botConfig';
 import { API_BASE } from '@/config/api';
 
 interface BotConfig {
-  is_active?: boolean;
   risk_per_trade: number;
   max_trades_per_day: number;
   max_trades_enabled: boolean;
@@ -58,7 +57,6 @@ export function SettingsPanel() {
   const { refreshBotStatus } = useBotContext();
   const [config, setConfig] = useState<BotConfig>({
     ...defaultBotConfig,
-    is_active: false,
     demo_mode: false,
     max_trades_enabled: false,
     momentum_min_body_atr: 0.2,
