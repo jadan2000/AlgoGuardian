@@ -15,6 +15,7 @@ import Sidebar from "@/components/layout/Sidebar";
 
 import { useEffect } from "react";
 import { getHealth } from "@/services/api";
+import { API_BASE } from "@/config/api";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
@@ -33,9 +34,30 @@ const Index = () => {
 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [mt5Connected, setMt5Connected] = useState(false);
 
   React.useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const refreshConnection = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/bot/status`);
+        if (!response.ok) throw new Error(`Status request failed (${response.status})`);
+        const data = await response.json();
+        if (mounted) setMt5Connected(Boolean(data.connected));
+      } catch {
+        if (mounted) setMt5Connected(false);
+      }
+    };
+    refreshConnection();
+    const interval = window.setInterval(refreshConnection, 5000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -79,8 +101,8 @@ const Index = () => {
             </button>
 
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-2 w-2 rounded-full bg-green-500" />
-              MT5 Connected
+              <div className={`h-2 w-2 rounded-full ${mt5Connected ? "bg-green-500" : "bg-red-500"}`} />
+              {mt5Connected ? "MT5 Connected" : "MT5 Disconnected"}
             </div>
           </div>
         </div>
