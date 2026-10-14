@@ -90,18 +90,21 @@ class SignalEngine:
             current_adx = float(entry_df["adx"].iloc[-2])
             self.log("ADX", round(current_adx, 2))
             if config.get("adx_filter", True) and current_adx < float(config["adx_threshold"]):
-                return {"status": "BLOCKED", "symbol": symbol, "reason": "ADX BELOW THRESHOLD"}
+                self.log("BLOCKED", f"{symbol} ADX BELOW THRESHOLD")
+                continue
 
             atr = ta.volatility.AverageTrueRange(entry_df["high"], entry_df["low"], entry_df["close"])
             entry_df["atr"] = atr.average_true_range()
             current_atr = float(entry_df["atr"].iloc[-2])
             baseline_atr = float(entry_df["atr"].iloc[-102:-2].mean())
             if baseline_atr <= 0:
-                return {"status": "BLOCKED", "symbol": symbol, "reason": "INVALID ATR BASELINE"}
+                self.log("BLOCKED", f"{symbol} INVALID ATR BASELINE")
+                continue
             atr_ratio = current_atr / baseline_atr
             self.log("ATR_RATIO", round(atr_ratio, 2))
             if config.get("atr_filter", True) and atr_ratio < float(config["atr_ratio"]):
-                return {"status": "BLOCKED", "symbol": symbol, "reason": "ATR"}
+                self.log("BLOCKED", f"{symbol} ATR BELOW SETTINGS RATIO")
+                continue
 
             current = entry_df.iloc[-2]
             previous = entry_df.iloc[-3]
@@ -140,13 +143,20 @@ class SignalEngine:
             self.log("CLOSE_LOCATION", round(close_location, 2))
 
             body_quality = body_ratio >= momentum_threshold or body_atr_ratio >= min_body_atr
-            directional_quality = ((bullish_trend and bullish_body and close_location >= min_close_location) or (bearish_trend and bearish_body and close_location <= (1.0 - min_close_location)))
+            directional_quality = (
+                (bullish_body and close_location >= min_close_location)
+                or (bearish_body and close_location <= (1.0 - min_close_location))
+            )
             if config.get("momentum_filter", True):
                 body_quality = body_ratio >= momentum_threshold or body_atr_ratio >= min_body_atr
                 directional_quality = (
-                    (bullish_trend and bullish_body and close_location >= min_close_location)
-                    or (bearish_trend and bearish_body and close_location <= (1.0 - min_close_location))
+                    (bullish_body and close_location >= min_close_location)
+                    or (bearish_body and close_location <= (1.0 - min_close_location))
                 )
+                if config.get("trend_filter", True):
+                    directional_quality = directional_quality and (
+                        (bullish_trend and bullish_body) or (bearish_trend and bearish_body)
+                    )
 
                 if not body_quality or not directional_quality:
                     self.log("BLOCKED", f"{symbol} MOMENTUM CONDITION FAILED")
@@ -268,7 +278,9 @@ class SignalEngine:
                 "previous_low": round(float(previous["low"]), 5),
                 "previous_high": round(float(previous["high"]), 5),
             })
-            return {"status": "BLOCKED", "symbol": symbol, "reason": reason, "trend": trend_direction}
+            # A failed setup on one symbol must not prevent later configured
+            # symbols from being evaluated in this cycle.
+            continue
 
         self.log("NO SIGNAL", "No setups found on any symbol")
         return None
