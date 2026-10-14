@@ -16,7 +16,7 @@ const BotStatus = () => {
 
   const [session, setSession] = useState("CLOSED");
   const [openTrades, setOpenTrades] = useState(0);
-  const [maxTrades, setMaxTrades] = useState(5);
+  const [maxOpenPositions, setMaxOpenPositions] = useState(1);
 
   const fetchBotStatus = async () => {
     try {
@@ -33,7 +33,7 @@ const BotStatus = () => {
 
         setSession(data.session || "CLOSED");
         setOpenTrades(data.open_trades || 0);
-        setMaxTrades(data.config?.max_trades_per_day || 5);
+        setMaxOpenPositions(data.config?.max_open_positions ?? 1);
 
         setIsActive(data.running || false);
         setIsKillSwitch(data.kill_switch || false);
@@ -153,7 +153,7 @@ const BotStatus = () => {
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Zap className="h-3 w-3 text-trading-green" />
           <span className="font-mono">
-            {openTrades}/{maxTrades} trades open
+            {openTrades}/{maxOpenPositions} positions open
           </span>
         </div>
       </div>
