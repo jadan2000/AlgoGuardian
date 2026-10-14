@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import AccountOverview from "@/components/dashboard/AccountOverview";
 import MarketOverview from "@/components/dashboard/MarketOverview";
 import TradeActivity from "@/components/dashboard/TradeActivity";
+import LiveTradeMovement from "@/components/dashboard/LiveTradeMovement";
 import AnalyticsPanel from "@/components/dashboard/AnalyticsPanel";
 import StrategySignalsPanel from "@/components/dashboard/StrategySignalsPanel";
 import BotStatus from "@/components/dashboard/BotStatus";
@@ -98,6 +99,7 @@ const Index = () => {
           {activeTab === "dashboard" && (
             <>
               <AccountOverview />
+              <LiveTradeMovement />
               <MarketOverview />
               <TradeActivity />
             </>
