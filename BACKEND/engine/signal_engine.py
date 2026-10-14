@@ -244,7 +244,7 @@ class SignalEngine:
 
             if bearish_trend and sell_condition:
                 return {
-                    "status": "EXECUTED",
+                    "status": "READY",
                     "signal": "SELL",
                     "symbol": symbol,
                     "reason": "BREAKOUT + EMA PULLBACK" if breakout_filter else "EMA PULLBACK",
