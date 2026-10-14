@@ -78,8 +78,13 @@ class SignalEngine:
             trend_candle = self._closed_candle(trend_df)
             bullish_trend = trend_candle["ema_fast"] > trend_candle["ema_slow"]
             bearish_trend = trend_candle["ema_fast"] < trend_candle["ema_slow"]
+            trend_direction = "BULLISH" if bullish_trend else "BEARISH" if bearish_trend else "NEUTRAL"
+            self.log("TREND_DIRECTION", trend_direction)
+            self.log("TREND_EMA_FAST", round(float(trend_candle["ema_fast"]), 5))
+            self.log("TREND_EMA_SLOW", round(float(trend_candle["ema_slow"]), 5))
 
             if config.get("trend_filter", True) and not (bullish_trend or bearish_trend):
+                self.log("BLOCKED", f"{symbol} NEUTRAL TREND: EMA fast equals EMA slow")
                 continue
 
             adx = ta.trend.ADXIndicator(entry_df["high"], entry_df["low"], entry_df["close"])
@@ -211,7 +216,30 @@ class SignalEngine:
                     "take_profit": float(config["take_profit"]),
                 }
 
-            return {"status": "BLOCKED", "symbol": symbol, "reason": "WAITING FOR SETUP"}
+            if not bullish_trend and not bearish_trend:
+                reason = "NEUTRAL TREND"
+            elif bullish_trend and not buy_condition:
+                reason = "BULLISH TREND BUT BUY ENTRY CONDITIONS FAILED"
+            elif bearish_trend and not sell_condition:
+                reason = "BEARISH TREND BUT SELL ENTRY CONDITIONS FAILED"
+            else:
+                reason = "WAITING FOR SETUP: UNMET ENTRY CONDITION"
+            self.log("ENTRY_REJECTED", reason)
+            self.log("ENTRY_DIAGNOSTICS", {
+                "trend": trend_direction,
+                "bullish_body": bullish_body,
+                "bearish_body": bearish_body,
+                "buy_condition": buy_condition,
+                "sell_condition": sell_condition,
+                "breakout_filter": breakout_filter,
+                "breakout_buy": breakout_buy,
+                "breakout_sell": breakout_sell,
+                "entry_close": round(entry_close, 5),
+                "entry_ema": round(ema_value, 5) if ema_value is not None else None,
+                "previous_low": round(float(previous["low"]), 5),
+                "previous_high": round(float(previous["high"]), 5),
+            })
+            return {"status": "BLOCKED", "symbol": symbol, "reason": reason, "trend": trend_direction}
 
         self.log("NO SIGNAL", "No setups found on any symbol")
         return None
