@@ -91,7 +91,9 @@ def validate_config(config_data: dict) -> dict:
     if not isinstance(config_data, dict):
         raise ConfigError("Configuration must be a JSON object")
 
-    merged = {**DEFAULT_CONFIG, **config_data}
+    # Ignore legacy/UI-only fields that are not real bot settings.
+    # Only keys with an explicit backend definition can be persisted.
+    merged = {**DEFAULT_CONFIG, **{key: value for key, value in config_data.items() if key in DEFAULT_CONFIG}}
 
     for key, (minimum, maximum) in NUMERIC_RANGES.items():
         value = merged.get(key)
@@ -115,6 +117,12 @@ def validate_config(config_data: dict) -> dict:
     for key in TEXT_KEYS:
         if not isinstance(merged.get(key), str) or not merged[key].strip():
             raise ConfigError(f"{key} must be a non-empty string")
+
+    supported_timeframes = {"M1", "M5", "M15", "M30", "H1", "H4"}
+    if merged["trend_tf"] not in supported_timeframes:
+        raise ConfigError("trend_tf must be one of M1, M5, M15, M30, H1, H4")
+    if merged["entry_tf"] not in supported_timeframes:
+        raise ConfigError("entry_tf must be one of M1, M5, M15, M30, H1, H4")
 
     pairs = merged.get("trading_pairs")
     if not isinstance(pairs, list) or not pairs or any(not isinstance(p, str) or not p.strip() for p in pairs):
