@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Save, Lock, AlertTriangle } from 'lucide-react';
+import { Save, AlertTriangle } from 'lucide-react';
 import { useBotContext } from '@/contexts/BotContext';
 import { defaultBotConfig } from '@/config/botConfig';
 import { API_BASE } from '@/config/api';
@@ -54,13 +54,6 @@ interface BotConfig {
   order_comment: string;
 }
 
-const lockedFields = new Set([
-  'risk_per_trade',
-  'max_daily_loss',
-  'max_drawdown',
-  'max_open_positions',
-]);
-
 export function SettingsPanel() {
   const { refreshBotStatus } = useBotContext();
   const [config, setConfig] = useState<BotConfig>({
@@ -105,7 +98,6 @@ export function SettingsPanel() {
   }, []);
 
   const handleConfigChange = <K extends keyof BotConfig>(key: K, value: BotConfig[K]) => {
-    if (lockedFields.has(String(key))) return;
     setConfig(prev => ({ ...prev, [key]: value }));
     setUnsavedChanges(true);
     setSaveStatus('idle');
@@ -120,11 +112,6 @@ export function SettingsPanel() {
     try {
       const updatePayload = {
         ...config,
-        // Protected risk controls remain unchanged by this UI.
-        risk_per_trade: config.risk_per_trade,
-        max_daily_loss: config.max_daily_loss,
-        max_drawdown: config.max_drawdown,
-        max_open_positions: config.max_open_positions,
       };
 
       const response = await fetch(`${API_BASE}/config`, {
@@ -242,20 +229,28 @@ export function SettingsPanel() {
                 <p className="text-sm text-muted-foreground">Protected account controls plus an optional daily trade-count limit.</p>
               </div>
               <Card className="p-4 md:p-6 space-y-5">
-                {[
-                  ['Risk Per Trade', `${config.risk_per_trade.toFixed(2)}%`, 'Percentage of balance risked per trade.'],
-                  ['Max Daily Loss', `${config.max_daily_loss.toFixed(1)}%`, 'Stops trading when the daily loss limit is reached.'],
-                  ['Max Drawdown', `${config.max_drawdown.toFixed(1)}%`, 'Maximum allowed account drawdown.'],
-                  ['Max Open Positions', String(config.max_open_positions), 'Protected concurrent-position limit.'],
-                ].map(([label, value, description]) => (
-                  <div key={label} className="flex items-center justify-between gap-4 border-b pb-4">
-                    <div>
-                      <Label className="font-semibold">{label}</Label>
-                      <p className="text-xs text-muted-foreground mt-1">{description}</p>
-                    </div>
-                    <div className="flex items-center gap-2 font-bold text-lg"><Lock className="h-4 w-4" />{value}</div>
+                <div className="space-y-5 border-b pb-5">
+                  <div>
+                    <Label className="font-semibold">Risk Per Trade</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Maximum percentage of account balance risked at the configured stop loss. Set to 0 to use fixed lot size.</p>
+                    <div className="flex items-center gap-4 mt-3"><Slider value={[config.risk_per_trade]} onValueChange={v => handleConfigChange('risk_per_trade', v[0])} min={0} max={10} step={0.1} /><b className="min-w-16 text-right">{config.risk_per_trade.toFixed(2)}%</b></div>
                   </div>
-                ))}
+                  <div>
+                    <Label className="font-semibold">Max Daily Loss</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Stop new entries after this daily loss percentage. Set to 0 to disable this limit.</p>
+                    <div className="flex items-center gap-4 mt-3"><Slider value={[config.max_daily_loss]} onValueChange={v => handleConfigChange('max_daily_loss', v[0])} min={0} max={20} step={0.1} /><b className="min-w-16 text-right">{config.max_daily_loss.toFixed(1)}%</b></div>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Max Drawdown</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Block new entries when current equity drawdown reaches this percentage. Set to 0 to disable.</p>
+                    <div className="flex items-center gap-4 mt-3"><Slider value={[config.max_drawdown]} onValueChange={v => handleConfigChange('max_drawdown', v[0])} min={0} max={50} step={0.5} /><b className="min-w-16 text-right">{config.max_drawdown.toFixed(1)}%</b></div>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Max Open Positions</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Maximum simultaneous positions per configured trading symbol.</p>
+                    <div className="flex items-center gap-4 mt-3"><Slider value={[config.max_open_positions]} onValueChange={v => handleConfigChange('max_open_positions', Math.round(v[0]))} min={1} max={20} step={1} /><b className="min-w-16 text-right">{config.max_open_positions}</b></div>
+                  </div>
+                </div>
                 {maxTradesToggle}
                 <div className="flex items-center justify-between gap-4 border-b last:border-b-0 pb-4 last:pb-0">
                   <div>
