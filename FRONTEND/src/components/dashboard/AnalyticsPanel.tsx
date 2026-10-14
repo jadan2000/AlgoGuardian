@@ -31,7 +31,7 @@ type Analytics = {
 
 const money = (value: number) => `${value < 0 ? "-$" : "$"}${Math.abs(value || 0).toFixed(2)}`;
 const number = (value: unknown, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
-const pfText = (value: number) => value === Infinity ? "∞" : number(value);
+const pfText = (value: number | null, wins: number) => value === null && wins > 0 ? "∞" : number(value);
 
 function MetricCard({ label, value, icon, positive }: { label: string; value: string; icon: React.ReactNode; positive?: boolean }) {
   return (
@@ -97,7 +97,7 @@ export default function AnalyticsPanel() {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <MetricCard label="Net Profit" value={money(analytics.net_profit)} icon={<TrendingUp className="h-4 w-4" />} positive={analytics.net_profit >= 0} />
       <MetricCard label="Daily P&L" value={money(analytics.daily_pnl)} icon={<BarChart3 className="h-4 w-4" />} positive={analytics.daily_pnl >= 0} />
-      <MetricCard label="Profit Factor" value={pfText(analytics.profit_factor)} icon={<Award className="h-4 w-4" />} />
+      <MetricCard label="Profit Factor" value={pfText(analytics.profit_factor, analytics.winning_trades)} icon={<Award className="h-4 w-4" />} />
       <MetricCard label="Max Drawdown" value={`${number(analytics.max_drawdown)}%`} icon={<AlertTriangle className="h-4 w-4" />} positive={analytics.max_drawdown === 0} />
     </div>
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
