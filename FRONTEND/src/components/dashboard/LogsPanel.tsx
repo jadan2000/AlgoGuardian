@@ -266,9 +266,9 @@ const handleCloseTrade = async (ticket: string) => {
   const avgConfidence = signals.length > 0
     ? (signals.reduce((sum, s) => sum + s.confidence, 0) / signals.length).toFixed(0)
     : 0;
-  const totalPnL = trades.reduce((sum, t) => sum + t.pnl, 0);
-  const winningTrades = trades.filter(t => t.pnl > 0).length;
-  const winRate = trades.length > 0 ? ((winningTrades / trades.length) * 100).toFixed(1) : 0;
+  const totalPnL = closedTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+  const winningTrades = closedTrades.filter(t => Number(t.pnl) > 0).length;
+  const winRate = closedTrades.length > 0 ? ((winningTrades / closedTrades.length) * 100).toFixed(1) : "0.0";
 
   return (
     <div className="w-full space-y-4">
@@ -288,7 +288,7 @@ const handleCloseTrade = async (ticket: string) => {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Current Time (UTC)</p>
-              <p className="text-sm font-mono text-foreground">{new Date(sessionInfo.current_time_utc).toLocaleTimeString()}</p>
+              <p className="text-sm font-mono text-foreground">{sessionInfo.current_time_utc && !Number.isNaN(Date.parse(sessionInfo.current_time_utc)) ? new Date(sessionInfo.current_time_utc).toLocaleTimeString() : "—"}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Next Session</p>
@@ -325,7 +325,7 @@ const handleCloseTrade = async (ticket: string) => {
           color="trading-green"
         />
         <MetricCard
-          title="Total P&L"
+          title="Closed P&L"
           value={`${totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}`}
           icon={Clock}
           color={totalPnL >= 0 ? 'green' : 'red'}
