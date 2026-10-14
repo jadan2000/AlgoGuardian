@@ -23,6 +23,14 @@ def get_account():
 
     positions = mt5.positions_get() or []
     stats = calculate_stats()
+    day_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    day_deals = mt5.history_deals_get(day_start, datetime.now()) or []
+    daily_pnl = sum(
+        float(getattr(deal, field, 0.0) or 0.0)
+        for deal in day_deals
+        for field in ("profit", "commission", "swap", "fee")
+        if getattr(deal, "position_id", 0)
+    )
 
     trade_activity = [
         {
@@ -67,8 +75,8 @@ def get_account():
         "margin": float(account.margin),
         "free_margin": float(account.margin_free),
         "open_positions": len(positions),
-        "daily_pnl": float(account.profit),
-        "daily_pnl_percent": round((account.profit / account.balance) * 100, 2) if account.balance > 0 else 0,
+        "daily_pnl": round(daily_pnl, 2),
+        "daily_pnl_percent": round((daily_pnl / account.balance) * 100, 2) if account.balance > 0 else 0,
         "win_rate": stats["win_rate"],
         "drawdown": stats["drawdown"],
         "expectancy": stats["expectancy"],
