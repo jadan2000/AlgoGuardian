@@ -25,30 +25,68 @@ class SignalEngine:
             print(f"[SIGNAL] {title}")
         else:
             print(f"[SIGNAL] {title}: {value}")
+        if title in ("BLOCKED", "ENTRY_REJECTED"):
+            self.last_diagnostic = str(value if value is not None else title)
 
     def __init__(self):
         self.mt5 = MT5Connector()
         self.session = SessionManager()
+        self.last_diagnostic = None
+
+    @staticmethod
+    def _diagnostic_fix(reason):
+        text = str(reason or "").upper()
+        rules = [
+            (("MT5 CONNECTION", "MT5 IS NOT CONNECTED"), "Open MetaTrader 5, sign in to the configured account, confirm Algo Trading is enabled, then restart the backend."),
+            (("SESSION FILTER",), "Check the London/New York session switches in Settings and the session schedule. Wait for an enabled session if trading hours are closed."),
+            (("COOLDOWN",), "No change is required. Wait for the configured cooldown to finish before another entry."),
+            (("TRADE HISTORY",), "Check that MT5 is connected and the account history is available, then restart the backend."),
+            (("CANDLE DATA", "INSUFFICIENT"), "Confirm the symbol is available in Market Watch, that the terminal is connected, and that historical candles have loaded. Wait for more candles if the chart is new."),
+            (("NEUTRAL TREND",), "Wait for the fast and slow trend EMAs to separate, or review the Trend Filter and EMA settings in Settings."),
+            (("ADX BELOW",), "Wait for stronger trend strength or review ADX Filter and ADX Threshold in Settings. Lowering the threshold may allow weaker setups."),
+            (("ATR BELOW", "INVALID ATR"), "Wait for sufficient volatility and valid candle history, or review ATR Filter and ATR Ratio in Settings."),
+            (("MOMENTUM CONDITION",), "Wait for a stronger candle close, or review Momentum Filter, Momentum Multiplier, minimum body/ATR, and close-location settings."),
+            (("SPREAD EXCEEDS",), "Wait for the spread to fall, or review Max Spread in Settings. Do not raise it unless the extra trading cost is acceptable."),
+            (("BELOW ENTRY EMA", "ABOVE ENTRY EMA"), "Wait for price to meet the entry EMA condition, or review Entry EMA Filter, Entry EMA, and trend settings."),
+            (("EXTENSION EXCEEDS",), "Wait for price to return closer to the EMA, or review ATR Extension Filter and its multiplier."),
+            (("CONFLUENCE BELOW",), "Wait for more filters to align, or review Confluence Threshold. Lowering it may admit weaker setups."),
+            (("ENTRY CONDITIONS", "UNMET ENTRY CONDITION", "ENTRY CONDITION FAILED"), "No order is warranted until the configured entry conditions align. Review the failed filters shown in the signal diagnostics."),
+            (("SYMBOL UNAVAILABLE", "INVALID SYMBOL"), "Check the exact broker symbol name in Market Watch (for example, a broker may use a suffix), then update Trading Pairs in Settings."),
+        ]
+        for phrases, fix in rules:
+            if any(phrase in text for phrase in phrases):
+                return fix
+        return "Review the reason and failed filter above. Check the related Settings value and confirm MT5 has live prices and candle history before retrying.")
+
+    def diagnostic_signal(self):
+        reason = self.last_diagnostic or "No valid setup was found during this scan."
+        return {
+            "status": "BLOCKED",
+            "reason": reason,
+            "fix": self._diagnostic_fix(reason),
+            "confidence": 0,
+        }
 
     def _closed_candle(self, df):
         return df.iloc[-2]
 
     def generate_signal(self):
         config = load_config()
+        self.last_diagnostic = None
         self.log("STARTING ANALYSIS")
 
         symbols = config.get("trading_pairs", ["XAUUSD"])
         if not self.mt5.connect():
             self.log("BLOCKED", "MT5 CONNECTION FAILED")
-            return None
+            return self.diagnostic_signal()
 
         if not self.session.can_trade(
             config.get("allow_london", True),
             config.get("allow_ny", True),
             config.get("demo_mode", False),
         ):
-            self.log("BLOCKED", "SESSION FILTER")
-            return None
+            self.log("BLOCKED", "SESSION FILTER: current time is outside enabled trading sessions")
+            return self.diagnostic_signal()
 
         cooldown_minutes = float(config["cooldown_minutes"])
         if cooldown_minutes > 0:
@@ -56,10 +94,11 @@ class SignalEngine:
             deals = mt5.history_deals_get(now - cooldown_minutes * 60, now)
             if deals is None:
                 self.log("BLOCKED", f"TRADE HISTORY UNAVAILABLE FOR COOLDOWN: {mt5.last_error()}")
-                return {"status": "BLOCKED", "reason": "TRADE HISTORY UNAVAILABLE"}
+                return self.diagnostic_signal()
             entries = [d for d in deals if getattr(d, "entry", None) in (mt5.DEAL_ENTRY_IN, mt5.DEAL_ENTRY_INOUT) and float(getattr(d, "volume", 0.0)) > 0]
             if entries and now - float(max(entries, key=lambda d: d.time).time) < cooldown_minutes * 60:
-                return {"status": "BLOCKED", "reason": "COOLDOWN BETWEEN ENTRIES"}
+                self.last_diagnostic = f"COOLDOWN BETWEEN ENTRIES: configured cooldown is {cooldown_minutes:g} minutes"
+                return self.diagnostic_signal()
 
         for symbol in symbols:
             self.log("SYMBOL", symbol)
@@ -285,5 +324,7 @@ class SignalEngine:
             # symbols from being evaluated in this cycle.
             continue
 
-        self.log("NO SIGNAL", "No setups found on any symbol")
-        return None
+        if not self.last_diagnostic:
+            self.last_diagnostic = "No valid setup found: current market conditions did not meet the configured entry rules."
+        self.log("NO SIGNAL", self.last_diagnostic)
+        return self.diagnostic_signal()
