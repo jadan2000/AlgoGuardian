@@ -148,21 +148,61 @@ class ExecutionEngine:
             "magic": int(config.get("magic", 20250620)),
             "comment": str(config.get("order_comment", "AlgoGuardian")),
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": getattr(info, "filling_mode", mt5.ORDER_FILLING_FOK),
         }
 
-        result = mt5.order_send(request)
-        if result is None:
-            print("ORDER FAILED: result is None")
-            print("MT5 ERROR:", mt5.last_error())
-            return False
+        # SYMBOL_FILLING_* values are capability flags, not ORDER_FILLING_*
+        # enum values. Passing info.filling_mode directly can send 3 (BOC),
+        # which is unsupported for market orders on many MT5 symbols.
+        filling_flags = int(getattr(info, "filling_mode", 0) or 0)
+        filling_candidates = []
+        if filling_flags & int(getattr(mt5, "SYMBOL_FILLING_IOC", 2)):
+            filling_candidates.append(mt5.ORDER_FILLING_IOC)
+        if filling_flags & int(getattr(mt5, "SYMBOL_FILLING_FOK", 1)):
+            filling_candidates.append(mt5.ORDER_FILLING_FOK)
 
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
+        # RETURN is not permitted for Market Execution; for other execution
+        # modes it is an available fallback.
+        execution_mode = getattr(info, "trade_exemode", None)
+        market_execution = getattr(mt5, "SYMBOL_TRADE_EXECUTION_MARKET", 2)
+        if execution_mode != market_execution:
+            filling_candidates.append(mt5.ORDER_FILLING_RETURN)
+
+        # Keep order deterministic and avoid duplicate enum values.
+        filling_candidates = list(dict.fromkeys(filling_candidates))
+        if not filling_candidates:
+            # Safe default for symbols that advertise no explicit flags.
+            filling_candidates = [mt5.ORDER_FILLING_FOK, mt5.ORDER_FILLING_IOC]
+
+        result = None
+        for index, filling_mode in enumerate(filling_candidates):
+            request["type_filling"] = filling_mode
+            result = mt5.order_send(request)
+
+            if result is None:
+                print("ORDER FAILED: result is None")
+                print("MT5 ERROR:", mt5.last_error())
+                return False
+
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                break
+
+            unsupported_filling = getattr(mt5, "TRADE_RETCODE_INVALID_FILL", 10030)
+            if result.retcode == unsupported_filling and index + 1 < len(filling_candidates):
+                print(
+                    f"[ORDER] Filling mode {filling_mode} unsupported for {symbol}; "
+                    f"retrying with {filling_candidates[index + 1]}"
+                )
+                continue
+
             print("ORDER FAILED")
             print("RETCODE:", result.retcode)
             print("COMMENT:", result.comment)
             print("MT5 ERROR:", mt5.last_error())
             print("REQUEST:", request)
+            return False
+
+        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+            print("ORDER FAILED: no supported filling mode succeeded")
             return False
 
         print(f"ORDER OPENED | {side} | Ticket={result.order} | Volume={volume}")
