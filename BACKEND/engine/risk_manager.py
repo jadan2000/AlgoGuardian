@@ -25,14 +25,18 @@ class RiskManager:
         if not symbol:
             return False, "INVALID SYMBOL"
 
-        positions = mt5.positions_get(symbol=symbol) or []
+        positions = mt5.positions_get(symbol=symbol)
+        if positions is None:
+            return False, f"POSITION DATA UNAVAILABLE: {mt5.last_error()}"
         max_open = int(config.get("max_open_positions", 1))
         if len(positions) >= max_open:
             return False, "MAX OPEN POSITIONS"
 
         now = datetime.now()
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        deals = mt5.history_deals_get(day_start, now) or []
+        deals = mt5.history_deals_get(day_start, now)
+        if deals is None:
+            return False, f"TRADE HISTORY UNAVAILABLE: {mt5.last_error()}"
 
         entry_deals = [
             deal
