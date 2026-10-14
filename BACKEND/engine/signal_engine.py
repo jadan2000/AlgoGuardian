@@ -233,7 +233,7 @@ class SignalEngine:
 
             if bullish_trend and buy_condition:
                 return {
-                    "status": "EXECUTED",
+                    "status": "READY",
                     "signal": "BUY",
                     "symbol": symbol,
                     "reason": "BREAKOUT + EMA PULLBACK" if breakout_filter else "EMA PULLBACK",
@@ -254,9 +254,9 @@ class SignalEngine:
                 }
 
             if not config.get("trend_filter", True) and buy_condition:
-                return {"status": "EXECUTED", "signal": "BUY", "symbol": symbol, "reason": "BREAKOUT" if breakout_filter else "ENTRY CONDITIONS", "confidence": confidence, "stop_loss": float(config["stop_loss"]), "take_profit": float(config["take_profit"])}
+                return {"status": "READY", "signal": "BUY", "symbol": symbol, "reason": "BREAKOUT" if breakout_filter else "ENTRY CONDITIONS", "confidence": confidence, "stop_loss": float(config["stop_loss"]), "take_profit": float(config["take_profit"])}
             if not config.get("trend_filter", True) and sell_condition:
-                return {"status": "EXECUTED", "signal": "SELL", "symbol": symbol, "reason": "BREAKOUT" if breakout_filter else "ENTRY CONDITIONS", "confidence": confidence, "stop_loss": float(config["stop_loss"]), "take_profit": float(config["take_profit"])}
+                return {"status": "READY", "signal": "SELL", "symbol": symbol, "reason": "BREAKOUT" if breakout_filter else "ENTRY CONDITIONS", "confidence": confidence, "stop_loss": float(config["stop_loss"]), "take_profit": float(config["take_profit"])}
 
             if not bullish_trend and not bearish_trend:
                 reason = "NEUTRAL TREND"
