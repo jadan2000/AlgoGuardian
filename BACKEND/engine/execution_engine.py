@@ -152,9 +152,45 @@ class ExecutionEngine:
         else:
             requested_volume = float(config["lot_size"])
 
+        min_volume = float(getattr(info, "volume_min", 0.0) or 0.0)
+        max_volume = float(getattr(info, "volume_max", 0.0) or 0.0)
+        if requested_volume < min_volume:
+            min_lot_risk = None
+            tick_size = float(getattr(info, "trade_tick_size", 0.0) or 0.0)
+            tick_value = float(getattr(info, "trade_tick_value", 0.0) or 0.0)
+            if tick_size > 0 and tick_value > 0:
+                min_lot_risk = (stop_distance / tick_size) * tick_value * min_volume
+            risk_budget = float(account.balance) * risk_percent / 100.0 if risk_percent > 0 else None
+            print(
+                "[ORDER] BLOCKED | Calculated volume is below broker minimum; "
+                "refusing to increase it automatically"
+                f" | requested_volume={requested_volume:.8f}"
+                f" | broker_min_volume={min_volume}"
+                f" | configured_lot_cap={config['lot_size']}"
+                f" | risk_budget={risk_budget:.2f}" if risk_budget is not None else
+                "[ORDER] BLOCKED | Calculated volume is below broker minimum; refusing to increase it automatically"
+                f" | requested_volume={requested_volume:.8f}"
+                f" | broker_min_volume={min_volume}"
+                f" | configured_lot_cap={config['lot_size']}"
+            )
+            if min_lot_risk is not None:
+                print(f"[ORDER] Minimum-lot estimated stop-loss risk: {min_lot_risk:.2f} account currency")
+            return False
+        if requested_volume > max_volume:
+            print(
+                f"[ORDER] BLOCKED | Requested volume {requested_volume:.8f} exceeds "
+                f"broker maximum {max_volume}"
+            )
+            return False
+
         volume = self._normalize_volume(symbol, requested_volume)
         if volume is None or volume <= 0:
-            print("[ORDER] Invalid normalized volume")
+            print(
+                "[ORDER] BLOCKED | Volume could not be normalized to broker volume step"
+                f" | requested_volume={requested_volume:.8f}"
+                f" | min={min_volume} max={max_volume}"
+                f" | step={getattr(info, 'volume_step', None)}"
+            )
             return False
 
         # Check required margin before submitting. A $10 account may not
