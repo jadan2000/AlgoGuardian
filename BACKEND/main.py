@@ -39,6 +39,7 @@ app.add_middleware(
         "http://192.168.100.36:8080",
         "http://192.168.0.103:8080",
     ],
+    allow_origin_regex=r"http://(localhost|127\\.0\\.0\\.1|192\\.168\\.\\d{1,3}\\.\\d{1,3}|10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|172\\.(1[6-9]|2\\d|3[01])\\.\\d{1,3}\\.\\d{1,3}):8080",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
