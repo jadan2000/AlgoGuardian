@@ -27,8 +27,11 @@ interface BotSignal {
   pair: string;
   direction: 'BUY' | 'SELL';
   confidence: number;
-  status?: 'EXECUTED' | 'BLOCKED';
+  status?: 'READY' | 'EXECUTED' | 'BLOCKED';
   reason?: string;
+  execution_status?: 'EXECUTED' | 'REJECTED';
+  execution_reason?: string;
+  fix?: string;
   filters?: SignalFilter[];
   timestamp?: string;
 }
@@ -362,7 +365,7 @@ const handleCloseTrade = async (ticket: string) => {
         <TabsContent value="signals" className="space-y-2">
           {signals.length === 0 ? (
             <Card className="p-8 bg-card border-border text-center">
-              <p className="text-muted-foreground"></p>
+              <p className="text-muted-foreground">No signal diagnostics yet. Start the bot to see why a setup is accepted or blocked.</p>
             </Card>
           ) : (
             <ScrollArea className="h-[500px] w-full rounded-lg border border-border bg-card">
@@ -384,14 +387,29 @@ const handleCloseTrade = async (ticket: string) => {
                           {signal.confidence}%
                         </Badge>
                       </div>
-                      <Badge variant={signal.status === 'BLOCKED' ? 'destructive' : 'default'}>
-                          {signal.status || 'EXECUTED'}
+                      <Badge variant={signal.status === 'BLOCKED' || signal.execution_status === 'REJECTED' ? 'destructive' : 'default'}>
+                          {signal.execution_status || signal.status || 'UNKNOWN'}
                         </Badge>
                     </div>
 
                     {signal.reason && (
-                      <div className="mb-2 text-xs text-red-400">
-                        Reason: {signal.reason}
+                      <div className="mb-2 rounded border border-border bg-secondary/40 p-3 text-xs space-y-1">
+                        <p className="font-semibold text-foreground">What happened</p>
+                        <p className="text-muted-foreground">{signal.reason}</p>
+                      </div>
+                    )}
+
+                    {signal.execution_reason && (
+                      <div className="mb-2 rounded border border-destructive/40 bg-destructive/5 p-3 text-xs space-y-1">
+                        <p className="font-semibold text-destructive">Why the order was not placed</p>
+                        <p className="text-foreground">{signal.execution_reason}</p>
+                      </div>
+                    )}
+
+                    {(signal.fix || signal.execution_reason || signal.status === 'BLOCKED' || signal.execution_status === 'REJECTED') && (
+                      <div className="mb-2 rounded border border-border bg-secondary/50 p-3 text-xs space-y-1">
+                        <p className="font-semibold text-foreground">How to fix it</p>
+                        <p className="text-muted-foreground">{signal.fix || "Review the reason above and the failed filter details below. Correct the related Settings value or MT5/account issue; do not bypass risk limits."}</p>
                       </div>
                     )}
 
