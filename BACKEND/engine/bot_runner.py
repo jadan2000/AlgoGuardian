@@ -69,13 +69,16 @@ def run_bot():
             print("SIGNAL RESULT:", signal)
 
             if signal:
-                save_signal(signal)
-                record_signal(cycle_id, signal)
-                if signal.get("status") == "EXECUTED":
-                    print("[BOT] EXECUTING SIGNAL")
+                if signal.get("status") == "READY":
+                    print("[BOT] SIGNAL READY; ATTEMPTING EXECUTION")
                     result = ExecutionEngine().execute(signal)
+                    signal["execution_status"] = "EXECUTED" if result else "REJECTED"
+                    if not result:
+                        signal["execution_reason"] = "Execution engine rejected the order; see [ORDER]/[RISK] logs for the precise reason."
                     print("EXECUTION RESULT:", result)
                     record_execution(cycle_id, signal, result)
+                save_signal(signal)
+                record_signal(cycle_id, signal)
 
         except Exception as exc:
             record_error(cycle_id, f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
