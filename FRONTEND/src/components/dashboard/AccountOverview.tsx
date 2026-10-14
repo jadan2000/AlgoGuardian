@@ -64,7 +64,7 @@ const AccountOverview = () => {
             winRate: typeof data.win_rate === "number" ? data.win_rate : 0,
             drawdown: typeof data.drawdown === "number" ? data.drawdown : 0,
             expectancy: typeof data.expectancy === "number" ? data.expectancy : 0,
-            profitFactor: typeof data.profit_factor === "number" ? data.profit_factor : 0,
+            profitFactor: typeof data.profit_factor === "number" ? data.profit_factor : (data.profit_factor === null && Number(data.win_rate) > 0 ? Number.POSITIVE_INFINITY : 0),
           });
         }
       } catch (err) {
@@ -130,7 +130,7 @@ const AccountOverview = () => {
 
       <StatCard
         label="Profit Factor"
-        value={accountData.profitFactor.toFixed(2)}
+        value={accountData.profitFactor === Number.POSITIVE_INFINITY ? "∞" : accountData.profitFactor.toFixed(2)}
         icon={<BarChart3 className="h-4 w-4" />}
         variant={accountData.profitFactor >= 1 ? "green" : "red"}
         delay={0.35}
