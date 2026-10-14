@@ -99,8 +99,11 @@ def close_trade(ticket: int):
         raise HTTPException(status_code=404, detail=f"Position {ticket} not found")
 
     tick = mt5.symbol_info_tick(position.symbol)
-    if tick is None:
-        raise HTTPException(status_code=500, detail="Failed to get symbol tick")
+    info = mt5.symbol_info(position.symbol)
+    if tick is None or info is None:
+        raise HTTPException(status_code=500, detail="Failed to get symbol tick or symbol settings")
+
+    config = load_config()
 
     if position.type == mt5.POSITION_TYPE_BUY:
         order_type = mt5.ORDER_TYPE_SELL
@@ -118,18 +121,41 @@ def close_trade(ticket: int):
         "type": order_type,
         "position": position.ticket,
         "price": price,
-        "deviation": 20,
-        "magic": 20250620,
-        "comment": "Manual Close",
+        "deviation": int(config["deviation"]),
+        "magic": int(config["magic"]),
+        "comment": f"{config['order_comment']} close",
         "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_FOK,
     }
 
-    result = mt5.order_send(request)
-    if result is None:
-        raise HTTPException(status_code=500, detail=f"Order send failed: {mt5.last_error()}")
-    if result.retcode != mt5.TRADE_RETCODE_DONE:
+    # Select only a filling mode supported by this symbol/broker.
+    filling_flags = int(getattr(info, "filling_mode", 0) or 0)
+    filling_candidates = []
+    if filling_flags & int(getattr(mt5, "SYMBOL_FILLING_IOC", 2)):
+        filling_candidates.append(mt5.ORDER_FILLING_IOC)
+    if filling_flags & int(getattr(mt5, "SYMBOL_FILLING_FOK", 1)):
+        filling_candidates.append(mt5.ORDER_FILLING_FOK)
+    market_execution = getattr(mt5, "SYMBOL_TRADE_EXECUTION_MARKET", 2)
+    if getattr(info, "trade_exemode", None) != market_execution:
+        filling_candidates.append(mt5.ORDER_FILLING_RETURN)
+    filling_candidates = list(dict.fromkeys(filling_candidates))
+    if not filling_candidates:
+        filling_candidates = [mt5.ORDER_FILLING_FOK, mt5.ORDER_FILLING_IOC]
+
+    result = None
+    for index, filling_mode in enumerate(filling_candidates):
+        request["type_filling"] = filling_mode
+        result = mt5.order_send(request)
+        if result is None:
+            raise HTTPException(status_code=500, detail=f"Order send failed: {mt5.last_error()}")
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            break
+        unsupported_filling = getattr(mt5, "TRADE_RETCODE_INVALID_FILL", 10030)
+        if result.retcode == unsupported_filling and index + 1 < len(filling_candidates):
+            continue
         raise HTTPException(status_code=500, detail=f"Close failed. Retcode={result.retcode}; comment={result.comment}")
+
+    if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+        raise HTTPException(status_code=500, detail="Close failed: no supported filling mode succeeded")
 
     log_closed_trade(
         ticket=position.ticket,
