@@ -43,7 +43,7 @@ def log_closed_trade(ticket: int, symbol: str, trade_type: str, volume: float, p
 
 
 def _empty_stats():
-    return {"total_trades": 0, "win_rate": 0, "profit_factor": 0, "expectancy": 0, "drawdown": 0}
+    return {"total_trades": 0, "win_rate": 0, "profit_factor": None, "expectancy": 0, "drawdown": 0}
 
 
 def _closed_trades_from_mt5(days: int = 30):
@@ -62,7 +62,7 @@ def _closed_trades_from_mt5(days: int = 30):
         if getattr(deal, "entry", None) not in (mt5.DEAL_ENTRY_OUT, mt5.DEAL_ENTRY_INOUT):
             continue
         row = by_position[position_id]
-        row["profit"] += float(getattr(deal, "profit", 0.0))
+        row["profit"] += sum(float(getattr(deal, field, 0.0) or 0.0) for field in ("profit", "commission", "swap", "fee"))
         row["symbol"] = deal.symbol
         row["volume"] = max(row["volume"], float(getattr(deal, "volume", 0.0)))
         row["close_time"] = max(row["close_time"], int(getattr(deal, "time", 0) or 0))
@@ -97,7 +97,7 @@ def get_closed_trade_stats(days: int = 30):
     return {
         "total_trades": total,
         "win_rate": round(len(wins) / total * 100, 2),
-        "profit_factor": round(gross_profit / gross_loss, 2) if gross_loss > 0 else 0,
+        "profit_factor": round(gross_profit / gross_loss, 2) if gross_loss > 0 else (None if gross_profit > 0 else 0),
         "expectancy": round(net / total, 2),
         "drawdown": round(max_drawdown, 2),
     }
