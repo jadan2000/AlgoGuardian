@@ -378,13 +378,15 @@ const handleCloseTrade = async (ticket: string) => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-semibold text-foreground">
-                          {signal.pair}
+                          {signal.pair || (signal as any).symbol || "Market scan"}
                         </span>
-                        <Badge className={signal.direction === 'BUY' ? 'bg-trading-green' : 'bg-trading-red'}>
-                          {signal.direction}
-                        </Badge>
+                        {signal.direction && (
+                          <Badge className={signal.direction === 'BUY' ? 'bg-trading-green' : 'bg-trading-red'}>
+                            {signal.direction}
+                          </Badge>
+                        )}
                         <Badge className="bg-accent">
-                          {signal.confidence}%
+                          {Number(signal.confidence || 0)}%
                         </Badge>
                       </div>
                       <Badge variant={signal.status === 'BLOCKED' || signal.execution_status === 'REJECTED' ? 'destructive' : 'default'}>
