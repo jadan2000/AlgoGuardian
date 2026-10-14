@@ -11,6 +11,10 @@ from api.routes.config import router as config_router
 from api.routes.logs import router as logs_router
 from api.routes.trades import router as trades_router
 from engine.bot_runner import run_bot
+from engine.session_manager import SessionManager
+from services import bot_state
+from engine.mt5_connector import MT5Connector
+import MetaTrader5 as mt5
 
 
 @asynccontextmanager
@@ -45,6 +49,24 @@ app.include_router(trades_router, prefix="/trades", tags=["trades"])
 app.include_router(logs_router, prefix="/logs", tags=["logs"])
 app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 app.include_router(account_router, prefix="/api/trading", tags=["account"])
+
+
+@app.get("/api/bot/session-info")
+def bot_session_info():
+    """Compatibility endpoint used by the dashboard session indicator."""
+    connected = MT5Connector().connect()
+    account = mt5.account_info() if connected else None
+    return {
+        "connected": account is not None,
+        "session": SessionManager().current_session(),
+        "running": bot_state.BOT_RUNNING,
+        "paused": bot_state.BOT_PAUSED,
+        "kill_switch": bot_state.KILL_SWITCH,
+        "account_type": (
+            "demo" if account and getattr(account, "trade_mode", None) == getattr(mt5, "ACCOUNT_TRADE_MODE_DEMO", object())
+            else "real" if account else None
+        ),
+    }
 
 
 @app.get("/")
