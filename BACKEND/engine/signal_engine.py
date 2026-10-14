@@ -194,13 +194,37 @@ class SignalEngine:
             self.log("BUY_CONDITION", buy_condition)
             self.log("SELL_CONDITION", sell_condition)
 
+            if config.get("atr_extension_filter", False):
+                if ema_value is None:
+                    entry_df["entry_ema"] = ta.trend.ema_indicator(entry_df["close"], window=int(config["entry_ema"]))
+                    ema_value = float(entry_df["entry_ema"].iloc[-2])
+                extension = abs(entry_close - ema_value) / current_atr if current_atr > 0 else float("inf")
+                self.log("ATR_EXTENSION", round(extension, 3))
+                if extension > float(config["atr_extension"]):
+                    self.log("BLOCKED", f"{symbol} ENTRY EXTENSION EXCEEDS SETTINGS MULTIPLIER")
+                    continue
+
+            confidence = sum([
+                25 if (not config.get("trend_filter", True) or ((bullish_trend and buy_condition) or (bearish_trend and sell_condition))) else 0,
+                20 if (bullish_body and bullish_trend) or (bearish_body and bearish_trend) else 0,
+                15 if (not config.get("momentum_filter", True) or (body_quality and directional_quality)) else 0,
+                15 if (not config.get("entry_ema_filter", True) or (ema_value is not None and ((bullish_trend and entry_close > ema_value) or (bearish_trend and entry_close < ema_value)))) else 0,
+                10 if (not config.get("adx_filter", True) or current_adx >= float(config["adx_threshold"])) else 0,
+                10 if (not config.get("atr_filter", True) or atr_ratio >= float(config["atr_ratio"])) else 0,
+                5 if (not config.get("spread_filter", True) or spread <= float(config["max_spread"])) else 0,
+            ])
+            self.log("CONFLUENCE_SCORE", confidence)
+            if confidence < float(config["confluence_threshold"]):
+                self.log("BLOCKED", f"{symbol} CONFLUENCE BELOW SETTINGS THRESHOLD")
+                continue
+
             if bullish_trend and buy_condition:
                 return {
                     "status": "EXECUTED",
                     "signal": "BUY",
                     "symbol": symbol,
                     "reason": "BREAKOUT + EMA PULLBACK" if breakout_filter else "EMA PULLBACK",
-                    "confidence": 95,
+                    "confidence": confidence,
                     "stop_loss": float(config["stop_loss"]),
                     "take_profit": float(config["take_profit"]),
                 }
