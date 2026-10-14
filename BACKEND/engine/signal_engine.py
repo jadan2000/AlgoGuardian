@@ -50,15 +50,13 @@ class SignalEngine:
             self.log("BLOCKED", "SESSION FILTER")
             return None
 
-        cooldown_minutes = float(config.get("cooldown_minutes", 0))
+        cooldown_minutes = float(config["cooldown_minutes"])
         if cooldown_minutes > 0:
             now = time.time()
             deals = mt5.history_deals_get(now - cooldown_minutes * 60, now) or []
-            losses = [d for d in deals if float(getattr(d, "profit", 0.0)) < 0]
-            if losses:
-                last_loss = max(losses, key=lambda d: d.time)
-                if now - last_loss.time < cooldown_minutes * 60:
-                    return {"status": "BLOCKED", "reason": "COOLDOWN AFTER LOSS"}
+            entries = [d for d in deals if getattr(d, "entry", None) in (mt5.DEAL_ENTRY_IN, mt5.DEAL_ENTRY_INOUT) and float(getattr(d, "volume", 0.0)) > 0]
+            if entries and now - float(max(entries, key=lambda d: d.time).time) < cooldown_minutes * 60:
+                return {"status": "BLOCKED", "reason": "COOLDOWN BETWEEN ENTRIES"}
 
         for symbol in symbols:
             self.log("SYMBOL", symbol)
