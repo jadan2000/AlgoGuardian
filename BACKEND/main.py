@@ -61,7 +61,7 @@ def bot_session_info():
         "connected": account is not None,
         "session": SessionManager().current_session(),
         "current_time_utc": datetime.now(timezone.utc).isoformat(),
-        "is_trading": bool(SessionManager().current_session()),
+        "is_trading": str(SessionManager().current_session() or "").upper() not in ("", "CLOSED", "OFFLINE", "NONE"),
         "current_session": SessionManager().current_session() or "CLOSED",
         "time_until_next_session": "—",
         "running": bot_state.BOT_RUNNING,
