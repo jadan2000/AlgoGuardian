@@ -148,27 +148,27 @@ class SignalEngine:
                     or (bearish_trend and bearish_body and close_location <= (1.0 - min_close_location))
                 )
 
-                if not body_quality:
-                    return {"status": "BLOCKED", "symbol": symbol, "reason": "MOMENTUM"}
-                if not directional_quality:
-                    if bullish_trend:
-                        return {"status": "BLOCKED", "symbol": symbol, "reason": "BULLISH MOMENTUM"}
-                    return {"status": "BLOCKED", "symbol": symbol, "reason": "BEARISH MOMENTUM"}
+                if not body_quality or not directional_quality:
+                    self.log("BLOCKED", f"{symbol} MOMENTUM CONDITION FAILED")
+                    continue
 
             spread = self.mt5.get_spread(symbol)
             self.log("SPREAD", spread)
             if config.get("spread_filter", True) and spread > float(config["max_spread"]):
-                return {"status": "BLOCKED", "symbol": symbol, "reason": "SPREAD"}
+                self.log("BLOCKED", f"{symbol} SPREAD EXCEEDS SETTINGS MAXIMUM")
+                continue
 
             entry_close = float(current["close"])
             ema_value = None
             if config.get("entry_ema_filter", True):
                 entry_df["entry_ema"] = ta.trend.ema_indicator(entry_df["close"], window=int(config["entry_ema"]))
                 ema_value = float(entry_df["entry_ema"].iloc[-2])
-                if bullish_trend and entry_close < ema_value:
-                    return {"status": "BLOCKED", "symbol": symbol, "reason": "BELOW ENTRY EMA"}
-                if bearish_trend and entry_close > ema_value:
-                    return {"status": "BLOCKED", "symbol": symbol, "reason": "ABOVE ENTRY EMA"}
+                if config.get("trend_filter", True) and bullish_trend and entry_close < ema_value:
+                    self.log("BLOCKED", f"{symbol} BELOW ENTRY EMA")
+                    continue
+                if config.get("trend_filter", True) and bearish_trend and entry_close > ema_value:
+                    self.log("BLOCKED", f"{symbol} ABOVE ENTRY EMA")
+                    continue
 
             breakout_filter = bool(config.get("breakout_filter", False))
             breakout_buy = entry_close >= buy_trigger
@@ -239,6 +239,11 @@ class SignalEngine:
                     "stop_loss": float(config["stop_loss"]),
                     "take_profit": float(config["take_profit"]),
                 }
+
+            if not config.get("trend_filter", True) and buy_condition:
+                return {"status": "EXECUTED", "signal": "BUY", "symbol": symbol, "reason": "BREAKOUT" if breakout_filter else "ENTRY CONDITIONS", "confidence": confidence, "stop_loss": float(config["stop_loss"]), "take_profit": float(config["take_profit"])}
+            if not config.get("trend_filter", True) and sell_condition:
+                return {"status": "EXECUTED", "signal": "SELL", "symbol": symbol, "reason": "BREAKOUT" if breakout_filter else "ENTRY CONDITIONS", "confidence": confidence, "stop_loss": float(config["stop_loss"]), "take_profit": float(config["take_profit"])}
 
             if not bullish_trend and not bearish_trend:
                 reason = "NEUTRAL TREND"
