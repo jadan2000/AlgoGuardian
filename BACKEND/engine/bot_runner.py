@@ -85,6 +85,18 @@ def run_bot():
                 record_signal(cycle_id, signal)
 
         except Exception as exc:
+            error_reason = f"BOT ERROR: {type(exc).__name__}: {exc}"
+            error_signal = {
+                "status": "BLOCKED",
+                "reason": error_reason,
+                "fix": "Check the backend terminal for the full traceback. Correct the reported configuration, dependency, data, or MT5 issue, then restart the backend. If this repeats, share the full error log for diagnosis.",
+                "confidence": 0,
+            }
+            try:
+                save_signal(error_signal)
+                record_signal(cycle_id, error_signal)
+            except Exception:
+                pass
             record_error(cycle_id, f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
             print("=" * 60)
             print("BOT ERROR")
