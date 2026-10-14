@@ -135,6 +135,24 @@ class ExecutionEngine:
             print("[ORDER] Invalid normalized volume")
             return False
 
+        # Check required margin before submitting. A $10 account may not
+        # support the broker's minimum XAUUSD volume; fail clearly rather than
+        # repeatedly sending orders the broker must reject.
+        required_margin = mt5.order_calc_margin(order_type, symbol, volume, price)
+        if required_margin is None:
+            print(f"[ORDER] Cannot calculate margin for {symbol}: {mt5.last_error()}")
+            return False
+        free_margin = float(getattr(account, "margin_free", 0.0) or 0.0)
+        margin_buffer = max(0.01, free_margin * 0.05)
+        if float(required_margin) + margin_buffer > free_margin:
+            print(
+                "[ORDER] BLOCKED | INSUFFICIENT FREE MARGIN "
+                f"| required={float(required_margin):.2f} "
+                f"| free={free_margin:.2f} "
+                f"| volume={volume} {symbol}"
+            )
+            return False
+
         digits = int(info.digits)
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
