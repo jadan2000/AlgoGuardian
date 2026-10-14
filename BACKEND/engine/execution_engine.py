@@ -13,6 +13,43 @@ class ExecutionEngine:
     def __init__(self):
         self.mt5 = MT5Connector()
         self.risk = RiskManager()
+        self.last_error = None
+        self.last_fix = None
+
+    def _reject(self, reason, fix=None):
+        self.last_error = str(reason)
+        self.last_fix = fix or self._fix_for_reason(self.last_error)
+        print(f"[DIAGNOSTIC] WHAT HAPPENED: {self.last_error}")
+        print(f"[DIAGNOSTIC] HOW TO FIX: {self.last_fix}")
+        return False
+
+    @staticmethod
+    def _fix_for_reason(reason):
+        text = str(reason).upper()
+        if "BELOW BROKER MINIMUM" in text or "BELOW BROKER MIN" in text:
+            return "Review Stop Loss/Take Profit in Settings against the broker's minimum distance; do not widen stops without checking the resulting risk."
+        if "VOLUME" in text or "LOT" in text or "RISK PERCENTAGE" in text or "RISK-SIZED" in text:
+            return "Check Risk Per Trade, Lot Size Cap, and the broker's minimum lot/volume step. If the minimum lot exceeds your risk budget, use a smaller-risk symbol or do not take this trade; the bot will not raise volume automatically."
+        if "MARGIN" in text or "INSUFFICIENT FREE MARGIN" in text:
+            return "Check free margin and the broker's margin requirement. Do not increase leverage or deposit funds solely to force this trade; reduce exposure only if it remains within your risk plan."
+        if "MT5" in text or "CONNECTION" in text or "ACCOUNT UNAVAILABLE" in text:
+            return "Open MetaTrader 5, sign in to the configured account/server, confirm the terminal is connected and Algo Trading is enabled, then restart the backend."
+        if "MAX OPEN POSITIONS" in text:
+            return "Close or wait for an existing position to finish, or review Max Open Positions in Settings if your strategy and risk plan allow more concurrent positions."
+        if "MAX DAILY LOSS" in text or "MAX DRAWDOWN" in text:
+            return "Trading is blocked by a protective risk limit. Do not disable it to force trades; review account equity and wait until the limit resets or your risk plan permits resuming."
+        if "MAX TRADES PER DAY" in text:
+            return "The configured daily trade limit has been reached. Wait for the next trading day or review the limit in Settings if intended."
+        if "SYMBOL" in text or "TICK" in text or "PRICE DATA" in text:
+            return "Confirm the exact broker symbol is visible in Market Watch and has current bid/ask prices. Check the terminal connection and symbol trading permissions."
+        if "STOP LOSS" in text or "TAKE PROFIT" in text or "SL/TP" in text:
+            return "Check positive Stop Loss and Take Profit distances in Settings and compare them with the broker's minimum stop distance."
+        if "FILL" in text or "RETCODE" in text or "ORDER SEND" in text or "BROKER" in text:
+            return "Read the MT5 retcode and broker comment in the order log. Check symbol trade permissions, market hours, filling mode, price, and stops; correct the specific rejection reason before retrying."
+        if "HISTORY" in text or "POSITION DATA" in text:
+            return "Reconnect MT5 and verify account history/position data is available. The bot blocks trading when it cannot safely verify account state."
+        return "Review the exact reason and MT5 error details above, correct the related setting or terminal/account issue, then let the bot retry. Do not bypass risk protections."
+
 
     def _normalize_volume(self, symbol, requested_volume):
         info = mt5.symbol_info(symbol)
@@ -54,23 +91,25 @@ class ExecutionEngine:
         return risk_money / loss_per_lot
 
     def execute(self, signal):
+        self.last_error = None
+        self.last_fix = None
         if not signal:
-            return False
+            return self._reject("No signal was supplied to the execution engine.")
 
         config = load_config()
         valid, reason = self.risk.validate(signal, config)
         if not valid:
             print(f"[RISK] BLOCKED | {reason}")
-            return False
+            return self._reject(f"Risk manager blocked the order: {reason}")
 
         if not MT5Service.connect():
             print("[MT5] Connection failed")
-            return False
+            return self._reject("MT5 connection failed.")
 
         account = mt5.account_info()
         if account is None:
             print("[MT5] Account unavailable")
-            return False
+            return self._reject("MT5 account information is unavailable.")
 
         # Paper experiments use real MT5 orders on a DEMO account so we get
         # genuine fills, spread/slippage and realized P&L without risking
@@ -82,33 +121,30 @@ class ExecutionEngine:
             account_trade_mode = getattr(account, "trade_mode", None)
             if demo_trade_mode is None or account_trade_mode != demo_trade_mode:
                 print("[PAPER] BLOCKED | MT5 account is not confirmed as DEMO")
-                return False
+                return self._reject("Paper-trading safety check failed: the connected MT5 account is not confirmed as DEMO.")
 
         symbol = signal["symbol"]
         if not MT5Service.ensure_symbol(symbol):
             print(f"[MT5] Symbol unavailable: {symbol}")
-            return False
+            return self._reject(f"Symbol unavailable in MT5: {symbol}.")
 
         positions = mt5.positions_get(symbol=symbol)
         if positions is None:
-            print(f"[ORDER] BLOCKED | Cannot verify existing positions: {mt5.last_error()}")
-            return False
+            return self._reject(f"Cannot verify existing positions: {mt5.last_error()}")
         max_positions = int(config["max_open_positions"])
         if len(positions) >= max_positions:
-            print(f"BLOCKED | MAX OPEN POSITIONS ({len(positions)}/{max_positions})")
-            return False
+            return self._reject(f"MAX OPEN POSITIONS: {len(positions)}/{max_positions} positions already open.")
 
         tick = mt5.symbol_info_tick(symbol)
         info = mt5.symbol_info(symbol)
         if tick is None or info is None:
-            return False
+            return self._reject(f"Current price or symbol specification is unavailable for {symbol}: {mt5.last_error()}")
 
         side = signal.get("signal")
         stop_distance = float(config["stop_loss"])
         take_distance = float(config["take_profit"])
         if stop_distance <= 0 or take_distance <= 0:
-            print("[ORDER] BLOCKED | Stop Loss and Take Profit must be positive Settings values")
-            return False
+            return self._reject("Stop Loss and Take Profit must be positive Settings values.")
 
         if side == "BUY":
             order_type = mt5.ORDER_TYPE_BUY
@@ -121,17 +157,13 @@ class ExecutionEngine:
             sl = price + stop_distance
             tp = price - take_distance
         else:
-            print(f"[ORDER] Invalid signal side: {side}")
-            return False
+            return self._reject(f"Invalid signal direction: {side!r}; expected BUY or SELL.")
 
         min_stop = float(getattr(info, "trade_stops_level", 0)) * float(info.point)
         if min_stop > 0 and (stop_distance < min_stop or take_distance < min_stop):
-            print(
-                "[ORDER] BLOCKED | Configured Stop Loss/Take Profit is below broker minimum "
-                f"| configured_sl={stop_distance} configured_tp={take_distance} "
-                f"| broker_minimum={min_stop}"
+            return self._reject(
+                f"Configured Stop Loss/Take Profit is below broker minimum: SL={stop_distance}, TP={take_distance}, minimum={min_stop}."
             )
-            return False
 
         risk_percent = float(config["risk_per_trade"])
         if risk_percent > 0:
@@ -142,12 +174,10 @@ class ExecutionEngine:
                 float(account.balance),
             )
             if requested_volume is None:
-                print("[ORDER] BLOCKED | Cannot calculate volume from configured risk percentage")
-                return False
+                return self._reject("Cannot calculate risk-sized volume because the broker tick size/value or stop distance is unavailable.")
             configured_lot_cap = float(config["lot_size"])
             if configured_lot_cap <= 0:
-                print("[ORDER] BLOCKED | lot_size must be greater than zero when risk sizing is enabled")
-                return False
+                return self._reject("Lot Size Cap must be greater than zero when risk-based sizing is enabled.")
             requested_volume = min(requested_volume, configured_lot_cap)
         else:
             requested_volume = float(config["lot_size"])
@@ -170,43 +200,29 @@ class ExecutionEngine:
             )
             if risk_budget is not None:
                 volume_message += f" | risk_budget={risk_budget:.2f}"
-            print(volume_message)
             if min_lot_risk is not None:
-                print(f"[ORDER] Minimum-lot estimated stop-loss risk: {min_lot_risk:.2f} account currency")
-            return False
+                volume_message += f" | minimum_lot_estimated_stop_loss_risk={min_lot_risk:.2f} account currency"
+            return self._reject(volume_message)
         if requested_volume > max_volume:
-            print(
-                f"[ORDER] BLOCKED | Requested volume {requested_volume:.8f} exceeds "
-                f"broker maximum {max_volume}"
-            )
-            return False
+            return self._reject(f"Requested volume {requested_volume:.8f} exceeds broker maximum {max_volume}.")
 
         volume = self._normalize_volume(symbol, requested_volume)
         if volume is None or volume <= 0:
-            print(
-                "[ORDER] BLOCKED | Volume could not be normalized to broker volume step"
-                f" | requested_volume={requested_volume:.8f}"
-                f" | min={min_volume} max={max_volume}"
-                f" | step={getattr(info, 'volume_step', None)}"
+            return self._reject(
+                f"Volume could not be normalized to broker step: requested={requested_volume:.8f}, min={min_volume}, max={max_volume}, step={getattr(info, 'volume_step', None)}."
             )
-            return False
 
         # Check required margin before submitting. A $10 account may not
         # support the broker's minimum XAUUSD volume; fail clearly rather than
         # repeatedly sending orders the broker must reject.
         required_margin = mt5.order_calc_margin(order_type, symbol, volume, price)
         if required_margin is None:
-            print(f"[ORDER] Cannot calculate margin for {symbol}: {mt5.last_error()}")
-            return False
+            return self._reject(f"MT5 could not calculate required margin for {symbol}: {mt5.last_error()}")
         free_margin = float(getattr(account, "margin_free", 0.0) or 0.0)
         if float(required_margin) > free_margin:
-            print(
-                "[ORDER] BLOCKED | INSUFFICIENT FREE MARGIN "
-                f"| required={float(required_margin):.2f} "
-                f"| free={free_margin:.2f} "
-                f"| volume={volume} {symbol}"
+            return self._reject(
+                f"INSUFFICIENT FREE MARGIN: required={float(required_margin):.2f}, free={free_margin:.2f}, volume={volume} {symbol}."
             )
-            return False
 
         digits = int(info.digits)
         request = {
@@ -252,9 +268,7 @@ class ExecutionEngine:
             result = mt5.order_send(request)
 
             if result is None:
-                print("ORDER FAILED: result is None")
-                print("MT5 ERROR:", mt5.last_error())
-                return False
+                return self._reject(f"MT5 order_send returned no result: {mt5.last_error()}")
 
             if result.retcode == mt5.TRADE_RETCODE_DONE:
                 break
@@ -267,16 +281,12 @@ class ExecutionEngine:
                 )
                 continue
 
-            print("ORDER FAILED")
-            print("RETCODE:", result.retcode)
-            print("COMMENT:", result.comment)
-            print("MT5 ERROR:", mt5.last_error())
-            print("REQUEST:", request)
-            return False
+            return self._reject(
+                f"MT5 rejected the order: retcode={result.retcode}, broker_comment={result.comment!r}, last_error={mt5.last_error()}, symbol={symbol}, volume={volume}, price={price}, SL={request['sl']}, TP={request['tp']}."
+            )
 
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
-            print("ORDER FAILED: no supported filling mode succeeded")
-            return False
+            return self._reject(f"No supported MT5 filling mode succeeded for {symbol}.")
 
         print(f"ORDER OPENED | {side} | Ticket={result.order} | Volume={volume}")
         return True
