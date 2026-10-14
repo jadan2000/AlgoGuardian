@@ -50,13 +50,14 @@ def list_trades():
 
         entry_deal = entries[0]
         exit_deal = exits[-1]
-        total_profit = sum(float(getattr(d, "profit", 0.0)) for d in exits)
+        total_profit = sum(sum(float(getattr(d, field, 0.0) or 0.0) for field in ("profit", "commission", "swap", "fee")) for d in exits)
         order = orders_by_position.get(position_id)
 
         entry_side = "BUY" if entry_deal.type == mt5.DEAL_TYPE_BUY else "SELL"
 
         trades.append({
             "ticket": int(exit_deal.ticket),
+            "position_ticket": position_id,
             "position_id": position_id,
             "symbol": exit_deal.symbol,
             "type": entry_side,
@@ -67,6 +68,7 @@ def list_trades():
             "sl": float(getattr(order, "sl", 0.0) or 0.0) if order else 0,
             "tp": float(getattr(order, "tp", 0.0) or 0.0) if order else 0,
             "time": int(exit_deal.time),
+            "close_time": datetime.fromtimestamp(int(exit_deal.time)).isoformat(),
         })
 
     trades.sort(key=lambda x: x["time"], reverse=True)
