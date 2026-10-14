@@ -89,7 +89,10 @@ class ExecutionEngine:
             print(f"[MT5] Symbol unavailable: {symbol}")
             return False
 
-        positions = mt5.positions_get(symbol=symbol) or []
+        positions = mt5.positions_get(symbol=symbol)
+        if positions is None:
+            print(f"[ORDER] BLOCKED | Cannot verify existing positions: {mt5.last_error()}")
+            return False
         max_positions = int(config["max_open_positions"])
         if len(positions) >= max_positions:
             print(f"BLOCKED | MAX OPEN POSITIONS ({len(positions)}/{max_positions})")
