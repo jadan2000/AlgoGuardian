@@ -141,6 +141,11 @@ class ExecutionEngine:
             if requested_volume is None:
                 print("[ORDER] BLOCKED | Cannot calculate volume from configured risk percentage")
                 return False
+            configured_lot_cap = float(config["lot_size"])
+            if configured_lot_cap <= 0:
+                print("[ORDER] BLOCKED | lot_size must be greater than zero when risk sizing is enabled")
+                return False
+            requested_volume = min(requested_volume, configured_lot_cap)
         else:
             requested_volume = float(config["lot_size"])
 
