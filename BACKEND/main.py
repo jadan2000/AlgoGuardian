@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from threading import Thread
 
 from fastapi import FastAPI
@@ -59,6 +60,10 @@ def bot_session_info():
     return {
         "connected": account is not None,
         "session": SessionManager().current_session(),
+        "current_time_utc": datetime.now(timezone.utc).isoformat(),
+        "is_trading": bool(SessionManager().current_session()),
+        "current_session": SessionManager().current_session() or "CLOSED",
+        "time_until_next_session": "—",
         "running": bot_state.BOT_RUNNING,
         "paused": bot_state.BOT_PAUSED,
         "kill_switch": bot_state.KILL_SWITCH,
