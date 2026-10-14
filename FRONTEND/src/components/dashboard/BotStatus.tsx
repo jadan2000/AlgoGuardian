@@ -153,7 +153,7 @@ const BotStatus = () => {
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Zap className="h-3 w-3 text-trading-green" />
           <span className="font-mono">
-            {openTrades}/{maxOpenPositions} positions open
+            {openTrades} positions open
           </span>
         </div>
       </div>
