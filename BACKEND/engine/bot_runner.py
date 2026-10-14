@@ -28,11 +28,24 @@ def save_signal(signal):
         signals = []
 
     signal = dict(signal)
+    reason = str(signal.get("reason") or "")
+    # The runner scans every five seconds. Do not fill the Logs panel with
+    # identical cooldown notices while the same cooldown is still active.
+    if (
+        signal.get("status") == "BLOCKED"
+        and reason.startswith("COOLDOWN BETWEEN ENTRIES")
+        and signals
+        and signals[-1].get("status") == "BLOCKED"
+        and signals[-1].get("reason") == reason
+    ):
+        return False
+
     signal["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
     signals.append(signal)
 
     with SIGNALS_FILE.open("w", encoding="utf-8") as f:
         json.dump(signals[-20:], f, indent=2)
+    return True
 
 
 def run_bot():
@@ -81,8 +94,9 @@ def run_bot():
                         signal["fix"] = getattr(execution_engine, "last_fix", None) or "Use the rejection details to correct the relevant Settings value, account condition, or MT5 connection issue. Do not increase risk just to force an order."
                     print("EXECUTION RESULT:", result)
                     record_execution(cycle_id, signal, result)
-                save_signal(signal)
-                record_signal(cycle_id, signal)
+                saved = save_signal(signal)
+                if saved:
+                    record_signal(cycle_id, signal)
 
         except Exception as exc:
             error_reason = f"BOT ERROR: {type(exc).__name__}: {exc}"
@@ -93,8 +107,9 @@ def run_bot():
                 "confidence": 0,
             }
             try:
-                save_signal(error_signal)
-                record_signal(cycle_id, error_signal)
+                saved = save_signal(error_signal)
+                if saved:
+                    record_signal(cycle_id, error_signal)
             except Exception:
                 pass
             record_error(cycle_id, f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
