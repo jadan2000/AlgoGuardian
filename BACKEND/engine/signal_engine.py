@@ -56,7 +56,7 @@ class SignalEngine:
         for phrases, fix in rules:
             if any(phrase in text for phrase in phrases):
                 return fix
-        return "Review the reason and failed filter above. Check the related Settings value and confirm MT5 has live prices and candle history before retrying.")
+        return "Review the reason and failed filter above. Check the related Settings value and confirm MT5 has live prices and candle history before retrying."
 
     def diagnostic_signal(self):
         reason = self.last_diagnostic or "No valid setup was found during this scan."
