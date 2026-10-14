@@ -18,3 +18,16 @@ secrets.json
 
 # Local paper-trading experiment history (never committed as source code)
 BACKEND/storage/experiment_history/
+
+# Local trading runtime data
+BACKEND/storage/logs.json
+BACKEND/storage/signals.json
+BACKEND/storage/trades.json
+BACKEND/storage/strategy_stats.json
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+__pycache__/
+*.pyc
