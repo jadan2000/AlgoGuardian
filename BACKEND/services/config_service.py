@@ -133,6 +133,8 @@ def validate_config(config_data: dict) -> dict:
 
     if merged["take_profit"] <= 0 or merged["stop_loss"] <= 0:
         raise ConfigError("stop_loss and take_profit must be greater than zero")
+    if len(merged["order_comment"]) > 31:
+        raise ConfigError("order_comment must be 31 characters or fewer")
 
     return merged
 
