@@ -297,8 +297,8 @@ export function SettingsPanel() {
                   <Label className="font-semibold">Trading Sessions</Label>
                   <div className="grid sm:grid-cols-2 gap-3 mt-3">
                     {[
-                      ['allow_london', '🇬🇧 London', '08:00–17:00 UTC'],
-                      ['allow_ny', '🗽 New York', '13:00–22:00 UTC'],
+                      ['allow_london', '🇬🇧 London', '08:00–17:00 London local time'],
+                      ['allow_ny', '🗽 New York', '08:00–17:00 New York local time'],
                     ].map(([key, label, hours]) => (
                       <label key={key} className="flex items-center justify-between border rounded-lg p-3">
                         <span><span className="font-medium">{label}</span><span className="block text-xs text-muted-foreground">{hours}</span></span>
@@ -379,7 +379,7 @@ export function SettingsPanel() {
                 </div>
                 <div>
                   <Label>Breakout Buffer</Label>
-                  <p className="text-xs text-muted-foreground mb-3">Buffer used for breakout confirmation.</p>
+                  <p className="text-xs text-muted-foreground mb-3">Breakout confirmation buffer and EMA pullback tolerance.</p>
                   <div className="flex items-center gap-4"><Slider value={[config.breakout_buffer]} onValueChange={v => handleConfigChange('breakout_buffer', v[0])} min={0} max={1} step={0.01} /><b>{config.breakout_buffer.toFixed(2)}</b></div>
                 </div>
                 <div>
@@ -407,9 +407,12 @@ export function SettingsPanel() {
             <section className="space-y-4">
               <h2 className="text-xl font-semibold">Advanced</h2>
               <Card className="p-4 md:p-6 grid gap-6 md:grid-cols-2">
-                <div><Label>Fast EMA</Label><p className="text-xs text-muted-foreground mb-3">Fast trend/entry EMA period.</p><div className="flex items-center gap-4"><Slider value={[config.ema_fast]} onValueChange={v => handleConfigChange('ema_fast', Math.round(v[0]))} min={2} max={100} step={1} /><b>{config.ema_fast}</b></div></div>
-                <div><Label>Slow EMA</Label><p className="text-xs text-muted-foreground mb-3">Slow trend EMA period.</p><div className="flex items-center gap-4"><Slider value={[config.ema_slow]} onValueChange={v => handleConfigChange('ema_slow', Math.round(v[0]))} min={3} max={200} step={1} /><b>{config.ema_slow}</b></div></div>
+                <div><Label>Fast EMA</Label><p className="text-xs text-muted-foreground mb-3">Fast trend/entry EMA period.</p><div className="flex items-center gap-4"><Slider value={[config.ema_fast]} onValueChange={v => handleConfigChange('ema_fast', Math.min(Math.round(v[0]), config.ema_slow - 1))} min={2} max={Math.min(100, config.ema_slow - 1)} step={1} /><b>{config.ema_fast}</b></div></div>
+                <div><Label>Slow EMA</Label><p className="text-xs text-muted-foreground mb-3">Slow trend EMA period.</p><div className="flex items-center gap-4"><Slider value={[config.ema_slow]} onValueChange={v => handleConfigChange('ema_slow', Math.max(Math.round(v[0]), config.ema_fast + 1))} min={Math.max(3, config.ema_fast + 1)} max={200} step={1} /><b>{config.ema_slow}</b></div></div>
                 <div><Label>Entry EMA</Label><p className="text-xs text-muted-foreground mb-3">EMA used for entry confirmation.</p><div className="flex items-center gap-4"><Slider value={[config.entry_ema]} onValueChange={v => handleConfigChange('entry_ema', Math.round(v[0]))} min={2} max={100} step={1} /><b>{config.entry_ema}</b></div></div>
+                <div><Label>Lot Size Cap / Fixed Lot</Label><p className="text-xs text-muted-foreground mb-3">Maximum volume when risk sizing is enabled; fixed volume when Risk Per Trade is 0.</p><input type="number" min="0.01" max="1000" step="0.01" value={config.lot_size} onChange={e => handleConfigChange('lot_size', Number(e.target.value))} className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></div>
+                <div><Label>Magic Number</Label><p className="text-xs text-muted-foreground mb-3">Identifier attached to bot orders.</p><input type="number" min="0" max="2147483647" step="1" value={config.magic} onChange={e => handleConfigChange('magic', Math.max(0, Math.floor(Number(e.target.value))))} className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></div>
+                <div><Label>Order Comment</Label><p className="text-xs text-muted-foreground mb-3">Comment attached to MT5 orders.</p><input type="text" maxLength={31} value={config.order_comment} onChange={e => handleConfigChange('order_comment', e.target.value)} className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></div>
                 <div><Label>Trend Timeframe</Label><Select value={config.trend_tf} onValueChange={v => handleConfigChange('trend_tf', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['M1', 'M5', 'M15', 'M30', 'H1'].map(tf => <SelectItem key={tf} value={tf}>{tf}</SelectItem>)}</SelectContent></Select></div>
                 <div><Label>Entry Timeframe</Label><Select value={config.entry_tf} onValueChange={v => handleConfigChange('entry_tf', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['M1', 'M5', 'M15'].map(tf => <SelectItem key={tf} value={tf}>{tf}</SelectItem>)}</SelectContent></Select></div>
               </Card>
