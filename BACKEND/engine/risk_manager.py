@@ -52,6 +52,7 @@ class RiskManager:
             float(getattr(deal, "profit", 0.0))
             + float(getattr(deal, "commission", 0.0))
             + float(getattr(deal, "swap", 0.0))
+            + float(getattr(deal, "fee", 0.0))
             for deal in deals
             if getattr(deal, "entry", None) in (mt5.DEAL_ENTRY_OUT, mt5.DEAL_ENTRY_INOUT)
         )
