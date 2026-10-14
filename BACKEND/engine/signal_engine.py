@@ -141,6 +141,8 @@ class SignalEngine:
             self.log("BODY_ATR_RATIO", round(body_atr_ratio, 2))
             self.log("CLOSE_LOCATION", round(close_location, 2))
 
+            body_quality = body_ratio >= momentum_threshold or body_atr_ratio >= min_body_atr
+            directional_quality = ((bullish_trend and bullish_body and close_location >= min_close_location) or (bearish_trend and bearish_body and close_location <= (1.0 - min_close_location)))
             if config.get("momentum_filter", True):
                 body_quality = body_ratio >= momentum_threshold or body_atr_ratio >= min_body_atr
                 directional_quality = (
@@ -235,7 +237,7 @@ class SignalEngine:
                     "signal": "SELL",
                     "symbol": symbol,
                     "reason": "BREAKOUT + EMA PULLBACK" if breakout_filter else "EMA PULLBACK",
-                    "confidence": 95,
+                    "confidence": confidence,
                     "stop_loss": float(config["stop_loss"]),
                     "take_profit": float(config["take_profit"]),
                 }
