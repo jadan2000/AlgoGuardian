@@ -12,7 +12,7 @@ class RiskManager:
     def validate(self, signal, config=None):
         config = config or load_config()
 
-        if not signal or signal.get("status") != "EXECUTED":
+        if not signal or signal.get("status") != "READY":
             return False, "INVALID SIGNAL"
         if not MT5Service.connect():
             return False, "MT5 CONNECTION FAILED"
