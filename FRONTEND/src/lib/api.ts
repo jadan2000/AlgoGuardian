@@ -1,42 +1,33 @@
-/**
- * Centralized API configuration
- * Uses environment variable VITE_API_URL to determine backend endpoint
- */
+import { API_BASE } from "@/config/api";
 
-const API_BASE_URL = 
-  import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-    ? 'http://${API_BASE}' 
-    : `http://${window.location.hostname}:8001`);
+/**
+ * Shared endpoint map. API_BASE follows the host serving the frontend, so
+ * a phone on the same Wi-Fi calls the laptop's LAN IP instead of phone localhost.
+ */
+const API_BASE_URL = API_BASE;
 
 export const API = {
   BASE: API_BASE_URL,
-  
-  // Bot endpoints
   BOT: {
-    STATUS: `${API_BASE_URL}/api/bot/status`,
-    START: `${API_BASE_URL}/api/bot/start`,
-    STOP: `${API_BASE_URL}/api/bot/stop`,
-    PAUSE: `${API_BASE_URL}/api/bot/pause`,
-    RESUME: `${API_BASE_URL}/api/bot/resume`,
-    KILL_SWITCH: `${API_BASE_URL}/api/bot/kill-switch`,
-    SIGNALS: (limit?: number) => `${API_BASE_URL}/api/bot/signals${limit ? `?limit=${limit}` : ''}`,
-    TRADES: `${API_BASE_URL}/api/bot/trades`,
-    TRADES_CLOSED: (limit?: number) => `${API_BASE_URL}/api/bot/trades/closed${limit ? `?limit=${limit}` : ''}`,
-    TRADE_CLOSE: (ticket: string) => `${API_BASE_URL}/api/bot/trades/${ticket}/close`,
+    STATUS: `${API_BASE_URL}/bot/status`,
+    START: `${API_BASE_URL}/bot/start`,
+    STOP: `${API_BASE_URL}/bot/pause`,
+    PAUSE: `${API_BASE_URL}/bot/pause`,
+    RESUME: `${API_BASE_URL}/bot/start`,
+    KILL_SWITCH: `${API_BASE_URL}/bot/kill`,
+    SIGNALS: (limit?: number) => `${API_BASE_URL}/bot/signals${limit ? `?limit=${limit}` : ""}`,
+    TRADES: `${API_BASE_URL}/trades/`,
+    TRADES_CLOSED: (limit?: number) => `${API_BASE_URL}/trades/closed${limit ? `?limit=${limit}` : ""}`,
+    TRADE_CLOSE: (ticket: string) => `${API_BASE_URL}/trades/${ticket}/close`,
     SESSION_INFO: `${API_BASE_URL}/api/bot/session-info`,
-    CONFIG: `${API_BASE_URL}/api/bot/config`,
+    CONFIG: `${API_BASE_URL}/config/`,
   },
-  
-  // Trading endpoints
   TRADING: {
     MARKET_OVERVIEW: `${API_BASE_URL}/api/trading/market-overview`,
     ACCOUNT: `${API_BASE_URL}/api/trading/account`,
   },
-  
-  // Logs endpoints
   LOGS: {
-    EXPORT: `${API_BASE_URL}/api/logs/export`,
+    EXPORT: `${API_BASE_URL}/logs/export`,
   },
 };
 
