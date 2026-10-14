@@ -80,7 +80,9 @@ def get_bot_status():
         "session": session,
         "open_trades": len(positions) if positions else 0,
         "config": {
-            "max_trades_per_day": config["max_trades_per_day"]
+            "max_trades_per_day": config["max_trades_per_day"],
+            "max_trades_enabled": config["max_trades_enabled"],
+            "max_open_positions": config["max_open_positions"],
         },
     }
 
