@@ -65,16 +65,20 @@ def run_bot():
                 continue
 
             print("[BOT] GENERATING SIGNAL...")
-            signal = SignalEngine().generate_signal()
+            signal_engine = SignalEngine()
+            signal = signal_engine.generate_signal()
             print("SIGNAL RESULT:", signal)
 
             if signal:
                 if signal.get("status") == "READY":
                     print("[BOT] SIGNAL READY; ATTEMPTING EXECUTION")
-                    result = ExecutionEngine().execute(signal)
+                    execution_engine = ExecutionEngine()
+                    result = execution_engine.execute(signal)
                     signal["execution_status"] = "EXECUTED" if result else "REJECTED"
                     if not result:
-                        signal["execution_reason"] = "Execution engine rejected the order; see [ORDER]/[RISK] logs for the precise reason."
+                        reason = getattr(execution_engine, "last_error", None) or "Order was rejected; inspect the MT5 retcode and broker comment in the logs."
+                        signal["execution_reason"] = reason
+                        signal["fix"] = getattr(execution_engine, "last_fix", None) or "Use the rejection details to correct the relevant Settings value, account condition, or MT5 connection issue. Do not increase risk just to force an order."
                     print("EXECUTION RESULT:", result)
                     record_execution(cycle_id, signal, result)
                 save_signal(signal)
