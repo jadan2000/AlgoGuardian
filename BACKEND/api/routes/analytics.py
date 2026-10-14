@@ -1,6 +1,5 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
-import math
 
 import MetaTrader5 as mt5
 from fastapi import APIRouter
@@ -107,7 +106,7 @@ def get_analytics_overview():
         "gross_loss": round(gross_loss, 2),
         "daily_pnl": round(daily_pnl, 2),
         "win_rate": round(len(wins) / total * 100, 2) if total else 0,
-        "profit_factor": round(gross_profit / gross_loss, 2) if gross_loss > 0 else (math.inf if gross_profit > 0 else 0),
+        "profit_factor": round(gross_profit / gross_loss, 2) if gross_loss > 0 else (None if gross_profit > 0 else 0),
         "expectancy": round(net / total, 2) if total else 0,
         "sharpe_ratio": 0,
         "sortino_ratio": 0,
