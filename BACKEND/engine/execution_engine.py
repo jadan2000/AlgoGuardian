@@ -25,7 +25,12 @@ class ExecutionEngine:
         if step <= 0:
             step = min_volume or 0.01
 
-        volume = max(min_volume, min(max_volume, float(requested_volume)))
+        requested_volume = float(requested_volume)
+        # Never silently raise a risk-sized request to the broker minimum:
+        # that could exceed the risk configured in Settings.
+        if requested_volume < min_volume or requested_volume > max_volume:
+            return None
+        volume = min(max_volume, requested_volume)
         steps = math.floor((volume - min_volume + 1e-12) / step)
         normalized = min_volume + steps * step
         precision = max(0, len(str(step).split(".")[-1].rstrip("0"))) if "." in str(step) else 0
@@ -85,7 +90,7 @@ class ExecutionEngine:
             return False
 
         positions = mt5.positions_get(symbol=symbol) or []
-        max_positions = int(config.get("max_open_positions", 1))
+        max_positions = int(config["max_open_positions"])
         if len(positions) >= max_positions:
             print(f"BLOCKED | MAX OPEN POSITIONS ({len(positions)}/{max_positions})")
             return False
@@ -96,39 +101,48 @@ class ExecutionEngine:
             return False
 
         side = signal.get("signal")
+        stop_distance = float(config["stop_loss"])
+        take_distance = float(config["take_profit"])
+        if stop_distance <= 0 or take_distance <= 0:
+            print("[ORDER] BLOCKED | Stop Loss and Take Profit must be positive Settings values")
+            return False
+
         if side == "BUY":
             order_type = mt5.ORDER_TYPE_BUY
             price = tick.ask
-            sl = price - abs(float(signal["stop_loss"]))
-            tp = price + abs(float(signal["take_profit"]))
+            sl = price - stop_distance
+            tp = price + take_distance
         elif side == "SELL":
             order_type = mt5.ORDER_TYPE_SELL
             price = tick.bid
-            sl = price + abs(float(signal["stop_loss"]))
-            tp = price - abs(float(signal["take_profit"]))
+            sl = price + stop_distance
+            tp = price - take_distance
         else:
             print(f"[ORDER] Invalid signal side: {side}")
             return False
 
         min_stop = float(getattr(info, "trade_stops_level", 0)) * float(info.point)
-        if min_stop > 0:
-            if abs(price - sl) < min_stop:
-                sl = price - min_stop if side == "BUY" else price + min_stop
-            if abs(tp - price) < min_stop:
-                tp = price + min_stop if side == "BUY" else price - min_stop
+        if min_stop > 0 and (stop_distance < min_stop or take_distance < min_stop):
+            print(
+                "[ORDER] BLOCKED | Configured Stop Loss/Take Profit is below broker minimum "
+                f"| configured_sl={stop_distance} configured_tp={take_distance} "
+                f"| broker_minimum={min_stop}"
+            )
+            return False
 
-        risk_percent = float(config.get("risk_per_trade", 0))
-        requested_volume = None
+        risk_percent = float(config["risk_per_trade"])
         if risk_percent > 0:
             requested_volume = self._risk_based_volume(
                 symbol,
-                abs(price - sl),
+                stop_distance,
                 risk_percent,
                 float(account.balance),
             )
-
-        if requested_volume is None:
-            requested_volume = float(config.get("lot_size", info.volume_min))
+            if requested_volume is None:
+                print("[ORDER] BLOCKED | Cannot calculate volume from configured risk percentage")
+                return False
+        else:
+            requested_volume = float(config["lot_size"])
 
         volume = self._normalize_volume(symbol, requested_volume)
         if volume is None or volume <= 0:
@@ -143,8 +157,7 @@ class ExecutionEngine:
             print(f"[ORDER] Cannot calculate margin for {symbol}: {mt5.last_error()}")
             return False
         free_margin = float(getattr(account, "margin_free", 0.0) or 0.0)
-        margin_buffer = max(0.01, free_margin * 0.05)
-        if float(required_margin) + margin_buffer > free_margin:
+        if float(required_margin) > free_margin:
             print(
                 "[ORDER] BLOCKED | INSUFFICIENT FREE MARGIN "
                 f"| required={float(required_margin):.2f} "
@@ -162,9 +175,9 @@ class ExecutionEngine:
             "price": price,
             "sl": round(sl, digits),
             "tp": round(tp, digits),
-            "deviation": int(config.get("deviation", 20)),
-            "magic": int(config.get("magic", 20250620)),
-            "comment": str(config.get("order_comment", "AlgoGuardian")),
+            "deviation": int(config["deviation"]),
+            "magic": int(config["magic"]),
+            "comment": str(config["order_comment"]),
             "type_time": mt5.ORDER_TIME_GTC,
         }
 
