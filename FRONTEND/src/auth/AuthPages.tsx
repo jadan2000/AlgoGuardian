@@ -199,3 +199,31 @@ export function ForgotPasswordPage() {
     <p className="mt-6 text-center text-sm text-slate-400"><Link to="/login" className="text-amber-300">Back to sign in</Link></p>
   </AuthLayout>;
 }
+
+
+export function ResetPasswordPage() {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    if (!supabase) return setError("Supabase is not configured.");
+    if (password.length < 8) return setError("Use a password with at least 8 characters.");
+    if (password !== confirmPassword) return setError("Your passwords do not match.");
+    setBusy(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (updateError) setError(updateError.message);
+    else setDone(true);
+  };
+
+  return <AuthLayout>
+    <div className="mb-7"><p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">Account recovery</p><h2 className="text-3xl font-semibold">Choose a new password</h2><p className="mt-2 text-sm text-slate-400">Set a new password for your AlgoGuardian account.</p></div>
+    {done ? <div className="space-y-4"><div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">Your password has been updated.</div><Link to="/login" className="block rounded-lg bg-amber-300 px-4 py-3 text-center font-semibold text-black">Back to sign in</Link></div> : <form onSubmit={submit} className="space-y-4"><Field label="New password" type="password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" /><Field label="Confirm new password" type="password" autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} required minLength={8} placeholder="Re-enter new password" />{error && <AuthError message={error} />}<button disabled={busy} className="h-11 w-full rounded-lg bg-amber-300 font-semibold text-black disabled:opacity-50">{busy ? "Updating…" : "Update password"}</button></form>}
+    <p className="mt-6 text-center text-sm text-slate-400"><Link to="/login" className="text-amber-300">Back to sign in</Link></p>
+  </AuthLayout>;
+}
