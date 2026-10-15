@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Thread
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,16 +56,61 @@ app.include_router(account_router, prefix="/api/trading", tags=["account"])
 
 @app.get("/api/bot/session-info")
 def bot_session_info():
-    """Compatibility endpoint used by the dashboard session indicator."""
+    """Return current session and the next enabled session start for Logs."""
     connected = MT5Connector().connect()
     account = mt5.account_info() if connected else None
+    manager = SessionManager()
+    config = load_config()
+    now_utc = datetime.now(timezone.utc)
+    current_session = manager.current_session() or "CLOSED"
+
+    # Session starts use each market's own timezone so daylight-saving changes
+    # are handled correctly. Only sessions enabled in Settings are considered.
+    session_windows = [
+        ("LONDON", "Europe/London", 8, bool(config.get("allow_london", False))),
+        ("NEW YORK", "America/New_York", 8, bool(config.get("allow_ny", False))),
+        ("ASIA", "Asia/Tokyo", 9, bool(config.get("allow_asia", False))),
+    ]
+    upcoming = []
+    for name, tz_name, start_hour, enabled in session_windows:
+        if not enabled:
+            continue
+        local_now = now_utc.astimezone(ZoneInfo(tz_name))
+        for day_offset in (0, 1, 2):
+            start_local = (local_now + timedelta(days=day_offset)).replace(
+                hour=start_hour, minute=0, second=0, microsecond=0
+            )
+            start_utc = start_local.astimezone(timezone.utc)
+            if start_utc > now_utc:
+                upcoming.append((start_utc, name, start_local))
+                break
+
+    if upcoming:
+        next_start_utc, next_name, next_start_local = min(upcoming, key=lambda item: item[0])
+        seconds = max(0, int((next_start_utc - now_utc).total_seconds()))
+        hours, remainder = divmod(seconds, 3600)
+        minutes = remainder // 60
+        if hours:
+            countdown = f"in {hours}h {minutes}m"
+        else:
+            countdown = f"in {minutes}m"
+        next_session_start = next_start_utc.isoformat()
+        time_until_next_session = f"{next_name} — {next_start_local.strftime('%H:%M %Z')} ({countdown})"
+    else:
+        next_session_start = ""
+        time_until_next_session = "No enabled sessions in Settings"
+
     return {
         "connected": account is not None,
-        "session": SessionManager().current_session(),
-        "current_time_utc": datetime.now(timezone.utc).isoformat(),
-        "is_trading": str(SessionManager().current_session() or "").upper() not in ("", "CLOSED", "OFFLINE", "NONE"),
-        "current_session": SessionManager().current_session() or "CLOSED",
-        "time_until_next_session": "—",
+        "session": current_session,
+        "current_time_utc": now_utc.isoformat(),
+        "is_trading": current_session not in ("", "CLOSED", "OFFLINE", "NONE"),
+        "current_session": current_session,
+        "next_session_start": next_session_start,
+        "time_until_next_session": time_until_next_session,
+        "london_hours": "08:00–17:00 Europe/London",
+        "ny_hours": "08:00–17:00 America/New_York",
+        "asia_hours": "09:00–18:00 Asia/Tokyo",
         "running": bot_state.BOT_RUNNING,
         "paused": bot_state.BOT_PAUSED,
         "kill_switch": bot_state.KILL_SWITCH,
