@@ -40,6 +40,7 @@ DEFAULT_CONFIG = {
     "trading_pairs": ["XAUUSDm"],
     "allow_london": True,
     "allow_ny": True,
+    "allow_asia": True,
     "demo_mode": False,
     "lot_size": 0.01,
     "deviation": 20,
@@ -76,7 +77,7 @@ NUMERIC_RANGES = {
 BOOL_KEYS = {
     "entry_ema_filter", "trend_filter", "adx_filter", "atr_filter",
     "atr_extension_filter", "momentum_filter", "spread_filter",
-    "breakout_filter", "allow_london", "allow_ny", "demo_mode",
+    "breakout_filter", "allow_london", "allow_ny", "allow_asia", "demo_mode",
     "max_trades_enabled",
 }
 
