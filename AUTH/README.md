@@ -1,21 +1,53 @@
 # AlgoGuardian Authentication
 
-This folder is the starting workspace for the authentication implementation.
+Implemented frontend flow:
+- `/register`: create account with full name, email and password.
+- `/login`: sign in using email and password.
+- `/activation`: authenticated users remain here until their profile activation status is `active`.
+- `/forgot-password`: request a password-reset email.
+- `/`: trading dashboard protected by authentication and activation status.
 
-## Agreed architecture
+## 1. Configure Supabase
 
-- Supabase Auth: user registration, sign-in, sign-out, and session management.
-- User profiles and subscription/licence status: Supabase database, protected by Row Level Security (RLS).
-- Frontend: React + TypeScript.
-- Backend: Python + FastAPI; protected endpoints must verify the authenticated user rather than trust a user ID supplied by the browser.
-- MT5 credentials: handled only by secure backend storage, never exposed in frontend code or placed in public profile records.
+In Supabase Dashboard:
+1. Open **Authentication → Sign In / Providers → Email** (labels may vary).
+2. Turn **Confirm email OFF**. The app intentionally expects signup to return a session immediately; it does not require users to verify email.
+3. Under **Authentication → URL Configuration**, add the local frontend URL (for example `http://localhost:8080`) and the deployed website URL to the allowed redirect URLs.
+4. In **SQL Editor**, run `AUTH/supabase_profiles.sql`.
 
-## Implementation sequence
+## 2. Configure frontend
 
-1. Configure Supabase client and environment variables.
-2. Build registration and sign-in screens.
-3. Add persistent session handling and protected routes.
-4. Add profile and subscription/licence checks.
-5. Verify backend access tokens and enforce per-user data isolation.
+Copy `FRONTEND/.env.example` to `FRONTEND/.env.local` (or merge these values into the existing local env file), then set:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY` (Supabase publishable/anon key only)
 
-Do not commit real API keys, service-role keys, broker passwords, or MT5 credentials. Use environment variables and keep secrets out of Git.
+Never put a Supabase service-role/secret key in the frontend or commit real secrets. Add the same two `VITE_` variables to the frontend hosting environment and redeploy.
+
+## 3. Install dependency and run
+
+From PowerShell:
+```powershell
+cd "C:\\FINAL BOT\\FRONTEND"
+npm install
+npm run dev
+```
+
+The dependency was added to `package.json`; run `npm install` to synchronize `package-lock.json` before building/deploying.
+
+## 4. Activation
+
+New profiles default to `pending`. This is deliberate: creating a login must not automatically grant access to paid trading functionality. The dashboard remains locked until a trusted administrator or a future verified subscription/payment workflow marks the profile active. Do not let a user set their own activation status.
+
+For a controlled test only, an administrator can activate a test user in Supabase SQL Editor:
+```sql
+update public.profiles
+set activation_status = 'active', updated_at = now()
+where id = 'THE_AUTH_USER_UUID';
+```
+Get the UUID from **Authentication → Users**. Never activate an account based only on a browser-supplied user ID.
+
+## Important security boundary
+
+This implements frontend authentication and an activation gate. The existing trading API endpoints still need server-side JWT verification and per-user resource isolation before the website is exposed to multiple customers. Frontend route protection alone is not an API security boundary. MT5 account credentials must remain server-side and must never be stored in a public profile.
+
+The trading engine, settings defaults, and MT5-sourced trade history are not changed by this authentication work.
