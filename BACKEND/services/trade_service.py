@@ -1,46 +1,9 @@
-import json
 from collections import defaultdict
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import MetaTrader5 as mt5
 
 from services.mt5_service import MT5Service
-
-STORAGE_PATH = Path(__file__).resolve().parents[1] / "storage" / "trades.json"
-
-
-def get_trades() -> list:
-    STORAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if not STORAGE_PATH.exists():
-        return []
-    try:
-        with STORAGE_PATH.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except (json.JSONDecodeError, OSError):
-        return []
-
-
-def save_trade(trade_data: dict) -> dict:
-    trades = get_trades()
-    trades.append(trade_data)
-    with STORAGE_PATH.open("w", encoding="utf-8") as f:
-        json.dump(trades, f, indent=2)
-    return trade_data
-
-
-def log_closed_trade(ticket: int, symbol: str, trade_type: str, volume: float, profit: float, position_id=None, close_time=None):
-    return save_trade({
-        "ticket": int(ticket),
-        "position_id": int(position_id) if position_id is not None else int(ticket),
-        "symbol": symbol,
-        "type": trade_type,
-        "volume": float(volume),
-        "profit": float(profit),
-        "close_time": close_time or datetime.now().isoformat(),
-    })
-
 
 def _empty_stats():
     return {"total_trades": 0, "win_rate": 0, "profit_factor": None, "expectancy": 0, "drawdown": 0}
