@@ -80,10 +80,10 @@ const Index = () => {
     <div className="min-h-screen w-full bg-background text-foreground">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="mx-auto max-w-[1440px] px-4 py-3 flex items-center justify-between">
-          <div className="hidden md:flex flex-col"><span className="text-base font-bold tracking-wide">AlgoGuardian</span><span className="text-xs text-muted-foreground">Welcome back Jibril</span></div>
+        <div className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-col"><span className="text-sm sm:text-base font-bold tracking-wide">AlgoGuardian</span><span className="text-[11px] sm:text-xs text-muted-foreground">Welcome back Jibril</span></div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <button
               onClick={handleThemeChange}
               className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary"
@@ -95,7 +95,7 @@ const Index = () => {
               )}
             </button>
 
-            <button type="button" onClick={() => setActiveTab("account")} aria-label="Open account page" title="Account" className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary"><UserRound className="h-4 w-4" /></button><button type="button" onClick={() => {}} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <button type="button" onClick={() => setActiveTab("account")} aria-label="Open account page" title="Account" className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary"><UserRound className="h-4 w-4" /></button><button type="button" onClick={() => {}} className="flex items-center gap-2 rounded-md border border-border px-2 sm:px-3 py-2 text-xs font-medium hover:bg-secondary"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
               <div className={`h-2 w-2 rounded-full ${mt5Connected ? "bg-green-500" : "bg-red-500"}`} />
               {mt5Connected ? "MT5 Connected" : "MT5 Disconnected"}
             </div>
