@@ -8,7 +8,7 @@ from services.mt5_service import MT5Service
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 def list_trades():
     if not MT5Service.connect():
         print("MT5 CONNECTION ERROR:", MT5Service.last_error())
