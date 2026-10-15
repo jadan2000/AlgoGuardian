@@ -134,47 +134,98 @@ export function RegisterPage() {
 
 export function ActivationPage() {
   const { user, profile, loading, refreshProfile, signOut } = useAuth();
+  const [phone, setPhone] = useState("");
   const [checking, setChecking] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [error, setError] = useState("");
+
   if (loading) return <AuthLayout><div className="text-center text-slate-400">Loading your account…</div></AuthLayout>;
   if (!user) return <Navigate to="/login" replace />;
   if (profile?.activation_status === "active") return <Navigate to="/" replace />;
 
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "");
   const checkStatus = async () => {
     setChecking(true);
-    const next = await refreshProfile();
-    setChecking(false);
-    if (next?.activation_status === "active") {
-      toast.success("Your account is activated.");
-      window.location.assign("/");
-    } else if (!next) {
-      toast.error("We could not load your activation status. Check your Supabase setup and profile-table migration.");
-    } else {
-      toast.info("Your account is still awaiting activation.");
+    try {
+      const next = await refreshProfile();
+      if (next?.activation_status === "active") {
+        toast.success("Your account is activated.");
+        window.location.assign("/");
+      } else if (!next) {
+        toast.error("We could not load your activation status. Check your Supabase setup.");
+      } else {
+        toast.info("Your payment or activation is still being processed.");
+      }
+    } finally {
+      setChecking(false);
     }
   };
 
-  const status = profile?.activation_status === "suspended" ? "Suspended" : "Pending activation";
+  const startPayment = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setPaymentMessage("");
+    if (!apiBase) {
+      setError("Payment service is not configured. Please contact support.");
+      return;
+    }
+    const normalizedPhone = phone.replace(/[\\s()-]/g, "");
+    if (!/^(?:\\+254|254|0)7\\d{8}$/.test(normalizedPhone) && !/^(?:\\+254|254|0)1\\d{8}$/.test(normalizedPhone)) {
+      setError("Enter a valid Kenyan M-Pesa number, for example 0712345678.");
+      return;
+    }
+    const mpesaPhone = normalizedPhone.startsWith("+") ? normalizedPhone.slice(1) : normalizedPhone.startsWith("0") ? "254" + normalizedPhone.slice(1) : normalizedPhone;
+    setPaying(true);
+    try {
+      const response = await fetch(apiBase + "/api/payments/stk-push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(supabase ? { Authorization: "Bearer " + (await supabase.auth.getSession()).data.session?.access_token } : {}),
+        },
+        body: JSON.stringify({ phone_number: mpesaPhone }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.detail || result.message || "Could not start M-Pesa payment.");
+      setPaymentMessage(result.message || "STK Push sent. Enter your M-Pesa PIN on your phone, then check your activation status.");
+      toast.success("M-Pesa payment request sent.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Payment could not be started.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const status = profile?.activation_status === "suspended" ? "Account suspended" : "Activate your account";
   const description = profile?.activation_status === "suspended"
     ? "Access is currently paused. Contact support for assistance."
-    : "Your login is ready. Account activation must be completed before the trading dashboard is unlocked.";
+    : "Pay the one-time activation fee to unlock your AlgoGuardian trading workspace.";
 
   return (
     <AuthLayout>
-      <div className="mb-7 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-300"><ShieldCheck className="h-7 w-7" /></div>
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">Account activation</p>
       <h2 className="text-3xl font-semibold tracking-tight">{status}</h2>
       <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
-      <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-        <div className="flex items-start gap-3">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
-          <div><p className="font-medium">Account created</p><p className="mt-1 break-all text-sm text-slate-400">{user.email}</p></div>
-        </div>
-        <div className="mt-4 flex items-start gap-3">
-          <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border border-amber-300/60 text-center text-xs leading-5 text-amber-300">2</div>
-          <div><p className="font-medium">Activation approval</p><p className="mt-1 text-sm text-slate-400">The dashboard unlocks after your activation status is marked active.</p></div>
-        </div>
+      <div className="mt-6 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-5">
+        <p className="text-sm text-slate-400">Activation fee</p>
+        <p className="mt-1 text-3xl font-semibold text-amber-300">KSh 1,000</p>
+        <p className="mt-2 text-xs text-slate-500">Pay securely through M-Pesa STK Push.</p>
       </div>
-      <button onClick={() => void checkStatus()} disabled={checking} className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 font-semibold text-black hover:bg-amber-200 disabled:opacity-50">{checking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} Check activation status</button>
+      {profile?.activation_status !== "suspended" && <>
+        <form onSubmit={startPayment} className="mt-6 space-y-4">
+          <Field label="M-Pesa phone number" type="tel" autoComplete="tel" inputMode="tel" placeholder="0712345678" value={phone} onChange={e => setPhone(e.target.value)} required />
+          {error && <AuthError message={error} />}
+          {paymentMessage && <div role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{paymentMessage}</div>}
+          <button type="submit" disabled={paying} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 font-semibold text-black hover:bg-amber-200 disabled:opacity-50">
+            {paying ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+            {paying ? "Sending STK Push…" : "Pay KSh 1,000 with M-Pesa"}
+          </button>
+        </form>
+        <button onClick={() => void checkStatus()} disabled={checking} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-4 font-medium text-slate-200 hover:bg-white/5 disabled:opacity-50">
+          {checking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} Check payment / activation status
+        </button>
+      </>}
       <button onClick={() => void signOut().then(() => window.location.assign("/login")).catch(e => toast.error(e.message))} className="mt-3 w-full rounded-lg border border-white/10 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">Sign out</button>
     </AuthLayout>
   );
