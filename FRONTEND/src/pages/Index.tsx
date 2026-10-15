@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, UserRound, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import AccountOverview from "@/components/dashboard/AccountOverview";
@@ -81,7 +81,7 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="mx-auto max-w-[1440px] px-4 py-3 flex items-center justify-between">
-          <div aria-hidden="true" />
+          <div className="flex flex-col"><span className="text-base font-bold tracking-wide">AlgoGuardian</span><span className="text-xs text-muted-foreground">Welcome back Jibril</span></div>
 
           <div className="flex items-center gap-3">
             <button
@@ -95,7 +95,7 @@ const Index = () => {
               )}
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <button type="button" onClick={() => setActiveTab("account")} aria-label="Open account page" title="Account" className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary"><UserRound className="h-4 w-4" /></button><button type="button" onClick={() => {}} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
               <div className={`h-2 w-2 rounded-full ${mt5Connected ? "bg-green-500" : "bg-red-500"}`} />
               {mt5Connected ? "MT5 Connected" : "MT5 Disconnected"}
             </div>
@@ -129,6 +129,15 @@ const Index = () => {
           {activeTab === "settings" && <SettingsPanel />}
 
           {activeTab === "logs" && <LogsPanel />}
+
+          {activeTab === "account" && (
+            <section className="rounded-xl border border-border bg-card p-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary"><UserRound className="h-7 w-7" /></div>
+                <div><h1 className="text-xl font-semibold">Jibril</h1><p className="text-sm text-muted-foreground">Account</p></div>
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </div>
