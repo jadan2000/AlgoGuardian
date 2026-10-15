@@ -9,7 +9,7 @@ import { BotProvider } from "@/contexts/BotContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/auth/AuthProvider";
-import { ActivationPage, ForgotPasswordPage, RegisterPage, SignInPage } from "@/auth/AuthPages";
+import { ActivationPage, ForgotPasswordPage, RegisterPage, ResetPasswordPage, SignInPage } from "@/auth/AuthPages";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -29,7 +29,7 @@ const App = () => {
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/activation" element={<ActivationPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
