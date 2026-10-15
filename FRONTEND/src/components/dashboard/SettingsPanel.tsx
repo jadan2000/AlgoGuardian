@@ -16,7 +16,6 @@ interface BotConfig {
   max_trades_enabled: boolean;
   max_daily_loss: number;
   max_drawdown: number;
-  confluence_threshold: number;
   trading_pairs: string[];
   allow_london: boolean;
   allow_ny: boolean;
@@ -336,11 +335,6 @@ export function SettingsPanel() {
               </div>
               <Card className="p-4 md:p-6 grid gap-6 md:grid-cols-2">
                 <div>
-                  <Label>Confluence Threshold</Label>
-                  <p className="text-xs text-muted-foreground mb-3">Minimum signal score.</p>
-                  <div className="flex items-center gap-4"><Slider value={[config.confluence_threshold]} onValueChange={v => handleConfigChange('confluence_threshold', v[0])} min={0} max={100} step={1} /><b>{config.confluence_threshold}</b></div>
-                </div>
-                <div>
                   <Label>ADX Threshold</Label>
                   <p className="text-xs text-muted-foreground mb-3">Minimum ADX strength.</p>
                   <div className="flex items-center gap-4"><Slider value={[config.adx_threshold]} onValueChange={v => handleConfigChange('adx_threshold', v[0])} min={0} max={60} step={1} /><b>{config.adx_threshold}</b></div>
@@ -421,7 +415,6 @@ export function SettingsPanel() {
             <section className="space-y-4">
               <h2 className="text-xl font-semibold">Signal Quality</h2>
               <Card className="p-4 md:p-6 space-y-6">
-                <div><Label>Confluence Threshold</Label><p className="text-xs text-muted-foreground mb-3">Minimum combined signal quality score.</p><div className="flex items-center gap-4"><Slider value={[config.confluence_threshold]} onValueChange={v => handleConfigChange('confluence_threshold', v[0])} min={0} max={100} step={1} /><b>{config.confluence_threshold}</b></div></div>
                 <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>The experiment reviewer can tune quality/filter parameters based on completed paper-trading cycles. Risk limits and maximum open positions remain protected.</AlertDescription></Alert>
               </Card>
             </section>
