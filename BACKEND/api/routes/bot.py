@@ -5,7 +5,6 @@ from pathlib import Path
 
 from config import MT5_LOGIN, MT5_PASSWORD, MT5_SERVER, MT5_PATH
 from services.config_service import load_config
-from services.trade_service import log_closed_trade
 from services import bot_state
 from engine.session_manager import SessionManager
 from engine.mt5_connector import MT5Connector
@@ -159,14 +158,6 @@ def close_trade(ticket: int):
     if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
         raise HTTPException(status_code=500, detail="Close failed: no supported filling mode succeeded")
 
-    log_closed_trade(
-        ticket=position.ticket,
-        symbol=position.symbol,
-        trade_type=trade_type,
-        volume=position.volume,
-        profit=position.profit,
-    )
-
     return {"success": True, "ticket": ticket, "message": "Trade closed successfully"}
 
 
@@ -177,6 +168,6 @@ def get_signals(limit: int = 10):
     try:
         with SIGNALS_FILE.open("r", encoding="utf-8") as f:
             signals = json.load(f)
-        return signals[-max(0, min(limit, 100)):]
+        return signals[-max(0, min(limit, 10)):]
     except (json.JSONDecodeError, OSError):
         return []
