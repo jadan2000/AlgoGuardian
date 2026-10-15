@@ -10,6 +10,7 @@ export const defaultBotConfig = {
   trading_pairs: ["XAUUSDm"],
   allow_london: true,
   allow_ny: true,
+  allow_asia: true,
   demo_mode: true,
 
   // Fast-scalping filters
