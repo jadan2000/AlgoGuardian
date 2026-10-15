@@ -16,9 +16,12 @@ import Sidebar from "@/components/layout/Sidebar";
 import { useEffect } from "react";
 import { getHealth } from "@/services/api";
 import { API_BASE } from "@/config/api";
+import { useAuth } from "@/auth/AuthProvider";
+import { toast } from "sonner";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
+  const { signOut } = useAuth();
 
    useEffect(() => {
      console.log("useEffect running");
@@ -95,7 +98,7 @@ const Index = () => {
               )}
             </button>
 
-            <button type="button" onClick={() => setActiveTab("account")} aria-label="Open account page" title="Account" className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary"><UserRound className="h-4 w-4" /></button><button type="button" onClick={() => {}} className="flex items-center gap-2 rounded-md border border-border px-2 sm:px-3 py-2 text-xs font-medium hover:bg-secondary"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <button type="button" onClick={() => setActiveTab("account")} aria-label="Open account page" title="Account" className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary"><UserRound className="h-4 w-4" /></button><button type="button" onClick={() => void signOut().then(() => window.location.assign("/login")).catch((error) => toast.error(error.message))} className="flex items-center gap-2 rounded-md border border-border px-2 sm:px-3 py-2 text-xs font-medium hover:bg-secondary"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
               <div className={`h-2 w-2 rounded-full ${mt5Connected ? "bg-green-500" : "bg-red-500"}`} />
               {mt5Connected ? "MT5 Connected" : "MT5 Disconnected"}
             </div>
