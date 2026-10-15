@@ -67,7 +67,30 @@ def _account_snapshot():
     return {k: getattr(account, k, None) for k in fields}
 
 
+def _remove_persisted_trade_records():
+    """Remove legacy per-trade/position data from existing journal snapshots."""
+    if not JOURNAL.exists():
+        return
+    forbidden = {"positions_start", "positions_end", "closed_trades", "trade_metrics", "execution_events", "signals"}
+    for path in JOURNAL.glob("*.json"):
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                continue
+            changed = False
+            for key in forbidden:
+                if key in data:
+                    data.pop(key, None)
+                    changed = True
+            if changed:
+                _write(path, data)
+        except (OSError, json.JSONDecodeError, TypeError):
+            continue
+
+
 def begin_cycle():
+    _remove_persisted_trade_records()
     config = load_config()
     state = _read(STATE_FILE, {})
     cycle_id = int(state.get("cycle_number", 0)) + 1
