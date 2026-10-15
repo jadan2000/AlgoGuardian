@@ -11,16 +11,16 @@ export const defaultBotConfig = {
   allow_london: false,
   allow_ny: false,
   allow_asia: false,
-  demo_mode: true,
+  demo_mode: false,
 
   // Fast-scalping filters
-  trend_filter: true,
+  trend_filter: false,
   entry_ema_filter: false,
   adx_filter: false,
   atr_filter: false,
   atr_extension_filter: false,
-  momentum_filter: true,
-  spread_filter: true,
+  momentum_filter: false,
+  spread_filter: false,
   breakout_filter: false,
 
   // Fast entry settings
