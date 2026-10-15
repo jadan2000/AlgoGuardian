@@ -19,10 +19,20 @@ def list_trades():
     deals = mt5.history_deals_get(start_date, end_date) or []
     orders = mt5.history_orders_get(start_date, end_date) or []
 
+    # Keep the best historical order per position. History may contain several
+    # orders for one position; a later order can have empty SL/TP fields.
     orders_by_position = {}
     for order in orders:
         position_id = int(getattr(order, "position_id", 0) or 0)
-        if position_id > 0:
+        if position_id <= 0:
+            continue
+        previous = orders_by_position.get(position_id)
+        score = int(float(getattr(order, "sl", 0.0) or 0.0) != 0) + int(float(getattr(order, "tp", 0.0) or 0.0) != 0)
+        previous_score = (
+            int(float(getattr(previous, "sl", 0.0) or 0.0) != 0)
+            + int(float(getattr(previous, "tp", 0.0) or 0.0) != 0)
+        ) if previous else -1
+        if score > previous_score:
             orders_by_position[position_id] = order
 
     grouped = {}
