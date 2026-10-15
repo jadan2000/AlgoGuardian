@@ -49,7 +49,6 @@ class SignalEngine:
             (("SPREAD EXCEEDS",), "Wait for the spread to fall, or review Max Spread in Settings. Do not raise it unless the extra trading cost is acceptable."),
             (("BELOW ENTRY EMA", "ABOVE ENTRY EMA"), "Wait for price to meet the entry EMA condition, or review Entry EMA Filter, Entry EMA, and trend settings."),
             (("EXTENSION EXCEEDS",), "Wait for price to return closer to the EMA, or review ATR Extension Filter and its multiplier."),
-            (("CONFLUENCE BELOW",), "Wait for more filters to align, or review Confluence Threshold. Lowering it may admit weaker setups."),
             (("ENTRY CONDITIONS", "UNMET ENTRY CONDITION", "ENTRY CONDITION FAILED"), "No order is warranted until the configured entry conditions align. Review the failed filters shown in the signal diagnostics."),
             (("SYMBOL UNAVAILABLE", "INVALID SYMBOL"), "Check the exact broker symbol name in Market Watch (for example, a broker may use a suffix), then update Trading Pairs in Settings."),
         ]
@@ -265,11 +264,6 @@ class SignalEngine:
                 10 if (not config.get("atr_filter", True) or atr_ratio >= float(config["atr_ratio"])) else 0,
                 5 if (not config.get("spread_filter", True) or spread <= float(config["max_spread"])) else 0,
             ])
-            self.log("CONFLUENCE_SCORE", confidence)
-            if confidence < float(config["confluence_threshold"]):
-                self.log("BLOCKED", f"{symbol} CONFLUENCE BELOW SETTINGS THRESHOLD")
-                continue
-
             if bullish_trend and buy_condition:
                 return {
                     "status": "READY",
