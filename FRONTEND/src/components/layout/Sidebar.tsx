@@ -4,6 +4,7 @@ import {
   LineChart,
   Settings,
   FileText,
+  UserRound,
 } from "lucide-react";
 
 type Props = {
@@ -48,6 +49,8 @@ export default function Sidebar({ activeTab, setActiveTab }: Props) {
 
       {/* Original Mobile Navigation */}
       <div className="md:hidden w-full border-b border-border bg-card">
+        <div className="px-3 pt-3 text-sm font-semibold">AlgoGuardian</div>
+        <div className="px-3 pb-2 text-xs text-muted-foreground">Welcome back Jibril</div>
         <nav className="flex overflow-x-auto gap-2 p-2">
           {items.map((item) => {
             const Icon = item.icon;
@@ -67,6 +70,13 @@ export default function Sidebar({ activeTab, setActiveTab }: Props) {
               </button>
             );
           })}
+          <button
+            onClick={() => setActiveTab("account")}
+            aria-label="Open account page"
+            className="flex-shrink-0 flex items-center justify-center h-9 w-9 rounded-full border border-border bg-secondary"
+          >
+            <UserRound className="h-4 w-4" />
+          </button>
         </nav>
       </div>
     </>
