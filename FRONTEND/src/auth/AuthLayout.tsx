@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldCheck, TrendingUp } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,9 +7,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="mx-auto grid min-h-screen w-full max-w-6xl lg:grid-cols-[1fr_0.9fr]">
         <section className="hidden flex-col justify-between border-r border-white/10 p-10 lg:flex">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-300/10 text-amber-300">
-              <TrendingUp className="h-6 w-6" />
-            </div>
+            <img src="/favicon.svg" alt="AlgoGuardian logo" className="h-11 w-11 rounded-xl object-contain" />
             <span className="text-xl font-bold tracking-wide">AlgoGuardian</span>
           </div>
           <div className="max-w-md">
@@ -22,7 +20,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <section className="flex items-center justify-center px-5 py-10 sm:px-8">
           <div className="w-full max-w-md">
             <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-300/10 text-amber-300"><TrendingUp className="h-5 w-5" /></div>
+              <img src="/favicon.svg" alt="AlgoGuardian logo" className="h-10 w-10 rounded-xl object-contain" />
               <span className="text-lg font-bold tracking-wide">AlgoGuardian</span>
             </div>
             {children}
