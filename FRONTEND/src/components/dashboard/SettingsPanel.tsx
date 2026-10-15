@@ -19,6 +19,7 @@ interface BotConfig {
   trading_pairs: string[];
   allow_london: boolean;
   allow_ny: boolean;
+  allow_asia: boolean;
   demo_mode: boolean;
   ema_fast: number;
   ema_slow: number;
@@ -296,6 +297,7 @@ export function SettingsPanel() {
                     {[
                       ['allow_london', '🇬🇧 London', '08:00–17:00 London local time'],
                       ['allow_ny', '🗽 New York', '08:00–17:00 New York local time'],
+                      ['allow_asia', '🌏 Asia (Tokyo)', '09:00–18:00 Tokyo local time'],
                     ].map(([key, label, hours]) => (
                       <label key={key} className="flex items-center justify-between border rounded-lg p-3">
                         <span><span className="font-medium">{label}</span><span className="block text-xs text-muted-foreground">{hours}</span></span>
