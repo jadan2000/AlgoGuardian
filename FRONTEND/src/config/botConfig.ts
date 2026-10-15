@@ -30,7 +30,6 @@ export const defaultBotConfig = {
   entry_tf: "M1",
 
   // Filter thresholds
-  confluence_threshold: 0,
   adx_threshold: 18,
   atr_ratio: 0.65,
   atr_extension: 1.5,
