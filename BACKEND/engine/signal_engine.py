@@ -38,7 +38,7 @@ class SignalEngine:
         text = str(reason or "").upper()
         rules = [
             (("MT5 CONNECTION", "MT5 IS NOT CONNECTED"), "Open MetaTrader 5, sign in to the configured account, confirm Algo Trading is enabled, then restart the backend."),
-            (("SESSION FILTER",), "Check the London/New York session switches in Settings and the session schedule. Wait for an enabled session if trading hours are closed."),
+            (("SESSION FILTER",), "Check the London, New York, and Asia session switches in Settings and their local-time schedules. Wait for an enabled session if trading hours are closed."),
             (("COOLDOWN",), "No change is required. Wait for the configured cooldown to finish before another entry."),
             (("TRADE HISTORY",), "Check that MT5 is connected and the account history is available, then restart the backend."),
             (("CANDLE DATA", "INSUFFICIENT"), "Confirm the symbol is available in Market Watch, that the terminal is connected, and that historical candles have loaded. Wait for more candles if the chart is new."),
@@ -82,6 +82,7 @@ class SignalEngine:
         if not self.session.can_trade(
             config.get("allow_london", True),
             config.get("allow_ny", True),
+            config.get("allow_asia", True),
             config.get("demo_mode", False),
         ):
             self.log("BLOCKED", "SESSION FILTER: current time is outside enabled trading sessions")
