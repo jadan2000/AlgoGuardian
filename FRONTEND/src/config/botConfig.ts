@@ -8,9 +8,9 @@ export const defaultBotConfig = {
   // Trading
   max_trades_per_day: 8,
   trading_pairs: ["XAUUSDm"],
-  allow_london: true,
-  allow_ny: true,
-  allow_asia: true,
+  allow_london: false,
+  allow_ny: false,
+  allow_asia: false,
   demo_mode: true,
 
   // Fast-scalping filters
