@@ -3,7 +3,6 @@
   "max_daily_loss": 2.0,
   "max_drawdown": 5.0,
   "max_trades_per_day": 8,
-  "confluence_threshold": 60.0,
   "entry_ema_filter": false,
   "trend_filter": true,
   "adx_filter": false,
