@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Bot, Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import AccountOverview from "@/components/dashboard/AccountOverview";
@@ -81,12 +81,7 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="mx-auto max-w-[1440px] px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bot className="h-6 w-6 text-primary" />
-            <h1 className="text-lg font-bold">
-              JIBU<span className="text-primary">FX</span>
-            </h1>
-          </div>
+          <div aria-hidden="true" />
 
           <div className="flex items-center gap-3">
             <button
