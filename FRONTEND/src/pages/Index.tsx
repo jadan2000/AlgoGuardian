@@ -81,7 +81,7 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="mx-auto max-w-[1440px] px-4 py-3 flex items-center justify-between">
-          <div className="flex flex-col"><span className="text-base font-bold tracking-wide">AlgoGuardian</span><span className="text-xs text-muted-foreground">Welcome back Jibril</span></div>
+          <div className="hidden md:flex flex-col"><span className="text-base font-bold tracking-wide">AlgoGuardian</span><span className="text-xs text-muted-foreground">Welcome back Jibril</span></div>
 
           <div className="flex items-center gap-3">
             <button
