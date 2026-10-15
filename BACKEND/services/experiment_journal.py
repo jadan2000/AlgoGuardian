@@ -6,6 +6,7 @@ can be compared later.
 """
 
 import hashlib
+import MetaTrader5 as mt5
 import json
 import os
 import platform
@@ -60,11 +61,16 @@ def config_fingerprint(config):
 
 
 def _account_snapshot():
-    account = mt5.account_info()
-    if account is None:
+    """Capture account-level metrics without storing individual trade records."""
+    try:
+        account = mt5.account_info()
+        if account is None:
+            return {}
+        fields = ("login", "server", "currency", "balance", "credit", "profit", "equity", "margin", "margin_free", "margin_level", "margin_so_call", "margin_so_so", "leverage", "trade_mode", "limit_orders")
+        return {k: getattr(account, k, None) for k in fields}
+    except Exception as exc:
+        print(f"[EXPERIMENT JOURNAL] Account snapshot unavailable: {exc}")
         return {}
-    fields = ("login", "server", "currency", "balance", "credit", "profit", "equity", "margin", "margin_free", "margin_level", "margin_so_call", "margin_so_so", "leverage", "trade_mode", "limit_orders")
-    return {k: getattr(account, k, None) for k in fields}
 
 
 def _remove_persisted_trade_records():
