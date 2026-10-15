@@ -44,7 +44,7 @@ def save_signal(signal):
     signals.append(signal)
 
     with SIGNALS_FILE.open("w", encoding="utf-8") as f:
-        json.dump(signals[-20:], f, indent=2)
+        json.dump(signals[-10:], f, indent=2)
     return True
 
 
