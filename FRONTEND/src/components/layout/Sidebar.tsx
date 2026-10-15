@@ -49,8 +49,6 @@ export default function Sidebar({ activeTab, setActiveTab }: Props) {
 
       {/* Original Mobile Navigation */}
       <div className="md:hidden w-full border-b border-border bg-card">
-        <div className="px-4 pt-4 text-xl font-bold tracking-wide">AlgoGuardian</div>
-        <div className="px-4 pb-3 pt-1 text-sm text-muted-foreground">Welcome back Jibril</div>
         <nav className="flex overflow-x-auto gap-2 p-2">
           {items.map((item) => {
             const Icon = item.icon;
