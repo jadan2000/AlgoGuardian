@@ -1,6 +1,7 @@
 import base64
 import hmac
 import json
+import logging
 import os
 import re
 from datetime import datetime
@@ -14,6 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 load_dotenv()
+
+logger = logging.getLogger("algoguardian.stk")
 
 app = FastAPI(title="AlgoGuardian STK Payments API", version="0.1.0")
 app.add_middleware(
@@ -50,10 +53,32 @@ def json_request(url: str, method: str = "GET", headers: dict | None = None, pay
             raw = response.read().decode("utf-8")
             return json.loads(raw) if raw else {}
     except HTTPError as exc:
-        host = urlsplit(url).hostname or "upstream"
+        parsed = urlsplit(url)
+        host = parsed.hostname or "upstream"
+        # Log only upstream location, status, and a short response excerpt.
+        # Never log request headers, bearer tokens, API keys, or request payloads.
+        try:
+            upstream_body = exc.read(1200).decode("utf-8", errors="replace")
+            upstream_body = re.sub(
+                r'(?i)(access_token|refresh_token|client_secret|consumer_secret|passkey|password|authorization|apikey|service_role_key)(["\\s:=]+)[^,"\\s}]+',
+                r'\1\2[REDACTED]',
+                upstream_body,
+            )
+            upstream_body = upstream_body[:600]
+        except Exception:
+            upstream_body = "[response body unavailable]"
+        logger.warning(
+            "Upstream HTTP error: host=%s path=%s status=%s response=%s",
+            host, parsed.path, exc.code, upstream_body,
+        )
         raise HTTPException(status_code=502, detail=f"Upstream request failed (HTTP {exc.code}) at {host}.") from exc
     except (URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
-        host = urlsplit(url).hostname or "upstream"
+        parsed = urlsplit(url)
+        host = parsed.hostname or "upstream"
+        logger.warning(
+            "Upstream connection/response error: host=%s path=%s error_type=%s",
+            host, parsed.path, type(exc).__name__,
+        )
         raise HTTPException(status_code=502, detail=f"Could not reach or parse response from {host}.") from exc
 
 
