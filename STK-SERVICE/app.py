@@ -8,8 +8,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, quote
 from urllib.request import Request, urlopen
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request as FastAPIRequest
 from pydantic import BaseModel, Field
+
+load_dotenv()
 
 app = FastAPI(title="AlgoGuardian STK Payments API", version="0.1.0")
 ACTIVATION_AMOUNT = 1000
