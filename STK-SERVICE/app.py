@@ -164,6 +164,13 @@ def start_stk_push(body: STKPushRequest, x_api_key: str | None = Header(default=
     return _start_stk_push(body, user_id=None)
 
 
+@app.get("/api/diagnostics/supabase-auth")
+def diagnose_supabase_auth(authorization: str | None = Header(default=None)):
+    """Validate the caller's Supabase session without starting a payment."""
+    user = current_supabase_user(authorization)
+    return {"ok": True, "authenticated": True, "user_id": user["id"]}
+
+
 @app.post("/api/website/stk-push")
 def website_stk_push(body: STKPushRequest, authorization: str | None = Header(default=None)):
     user = current_supabase_user(authorization)
