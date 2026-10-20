@@ -11,6 +11,7 @@ import StrategySignalsPanel from "@/components/dashboard/StrategySignalsPanel";
 import BotStatus from "@/components/dashboard/BotStatus";
 import { SettingsPanel } from "@/components/dashboard/SettingsPanel";
 import { LogsPanel } from "@/components/dashboard/LogsPanel";
+import AccountsPage from "@/components/dashboard/AccountsPage";
 import Sidebar from "@/components/layout/Sidebar";
 
 import { useEffect } from "react";
@@ -149,6 +150,8 @@ const Index = () => {
           {activeTab === "settings" && <SettingsPanel />}
 
           {activeTab === "logs" && <LogsPanel />}
+
+          {activeTab === "accounts" && <AccountsPage />}
 
           {activeTab === "account" && (
             <section className="rounded-xl border border-border bg-card p-6">
