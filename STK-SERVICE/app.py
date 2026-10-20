@@ -68,12 +68,20 @@ def json_request(url: str, method: str = "GET", headers: dict | None = None, pay
                 )[:240]
         except (ValueError, OSError):
             pass
-        # Do not include the URL query string: it can contain sensitive values.
         print(
             f"Upstream HTTP error: method={method} host={host} path={path} "
             f"status={exc.code} error_code={safe_code!r} message={safe_message!r}"
         )
-        raise HTTPException(status_code=502, detail=f"Upstream request failed (HTTP {exc.code}) at {host}{path}.") from exc
+        # Surface only the safe upstream error code/message to the caller.
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": f"Upstream request failed at {host}{path}.",
+                "upstream_status": exc.code,
+                "upstream_error_code": safe_code,
+                "upstream_message": safe_message,
+            },
+        ) from exc
     except (URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
         host = urlsplit(url).hostname or "upstream"
         print(f"Upstream connection/response error: host={host} type={type(exc).__name__}")
