@@ -49,42 +49,10 @@ def json_request(url: str, method: str = "GET", headers: dict | None = None, pay
             raw = response.read().decode("utf-8")
             return json.loads(raw) if raw else {}
     except HTTPError as exc:
-        parsed = urlsplit(url)
-        host = parsed.hostname or "upstream"
-        path = parsed.path or "/"
-        # Read only safe, allow-listed error fields. Never log headers, tokens,
-        # phone numbers, query strings, or an unfiltered upstream response body.
-        safe_code = "unknown"
-        safe_message = "no safe error message returned"
-        try:
-            error_body = json.loads(exc.read().decode("utf-8", errors="replace"))
-            if isinstance(error_body, dict):
-                safe_code = str(error_body.get("code") or error_body.get("error") or "unknown")[:100]
-                safe_message = str(
-                    error_body.get("msg")
-                    or error_body.get("message")
-                    or error_body.get("error_description")
-                    or "no safe error message returned"
-                )[:240]
-        except (ValueError, OSError):
-            pass
-        print(
-            f"Upstream HTTP error: method={method} host={host} path={path} "
-            f"status={exc.code} error_code={safe_code!r} message={safe_message!r}"
-        )
-        # Surface only the safe upstream error code/message to the caller.
-        raise HTTPException(
-            status_code=502,
-            detail={
-                "message": f"Upstream request failed at {host}{path}.",
-                "upstream_status": exc.code,
-                "upstream_error_code": safe_code,
-                "upstream_message": safe_message,
-            },
-        ) from exc
+        host = urlsplit(url).hostname or "upstream"
+        raise HTTPException(status_code=502, detail=f"Upstream request failed (HTTP {exc.code}) at {host}.") from exc
     except (URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
         host = urlsplit(url).hostname or "upstream"
-        print(f"Upstream connection/response error: host={host} type={type(exc).__name__}")
         raise HTTPException(status_code=502, detail=f"Could not reach or parse response from {host}.") from exc
 
 
@@ -170,13 +138,6 @@ def health():
 def start_stk_push(body: STKPushRequest, x_api_key: str | None = Header(default=None)):
     check_api_key(x_api_key)
     return _start_stk_push(body, user_id=None)
-
-
-@app.get("/api/diagnostics/supabase-auth")
-def diagnose_supabase_auth(authorization: str | None = Header(default=None)):
-    """Validate the caller's Supabase session without starting a payment."""
-    user = current_supabase_user(authorization)
-    return {"ok": True, "authenticated": True, "user_id": user["id"]}
 
 
 @app.post("/api/website/stk-push")
