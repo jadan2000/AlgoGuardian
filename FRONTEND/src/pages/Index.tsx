@@ -85,7 +85,7 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-col"><span className="text-2xl sm:text-3xl font-bold tracking-wide">AlgoGuardian</span><span className="text-xs sm:text-sm text-muted-foreground">Welcome back, {firstName}</span></div>
+          <div className="flex min-w-0 items-center gap-3"><img src="/favicon.svg" alt="AlgoGuardian logo" className="h-10 w-10 shrink-0 rounded-full border border-border bg-background object-contain p-1" /><div className="flex min-w-0 flex-col"><span className="text-2xl sm:text-3xl font-bold tracking-wide">AlgoGuardian</span><span className="text-xs sm:text-sm text-muted-foreground">Welcome back, {firstName}</span></div></div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <button
