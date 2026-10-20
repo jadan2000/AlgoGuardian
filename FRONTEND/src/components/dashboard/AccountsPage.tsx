@@ -52,8 +52,8 @@ export default function AccountsPage() {
     try {
       const data = await request("/status");
       setStatus(data);
-      if (data.login && !login) setLogin(String(data.login));
-      if (data.server && !server) setServer(data.server);
+      if (data.login) setLogin(previous => previous || String(data.login));
+      if (data.server) setServer(previous => previous || data.server);
       if (showToast) toast.success(data.connected ? "MT5 is connected." : "Connection status refreshed.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not load broker account status.";
@@ -62,7 +62,7 @@ export default function AccountsPage() {
     } finally {
       setLoading(false);
     }
-  }, [request, login, server]);
+  }, [request]);
 
   useEffect(() => {
     void loadStatus();
