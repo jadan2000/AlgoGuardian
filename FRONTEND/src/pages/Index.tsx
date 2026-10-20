@@ -21,7 +21,8 @@ import { toast } from "sonner";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
-  const { signOut } = useAuth();
+  const { signOut, profile, user } = useAuth();
+  const firstName = (profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "there").trim().split(/\\s+/)[0];
 
    useEffect(() => {
      console.log("useEffect running");
@@ -80,11 +81,11 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground">
+    <div className="page-enter min-h-screen w-full bg-background text-foreground">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-col"><span className="text-sm sm:text-base font-bold tracking-wide">AlgoGuardian</span><span className="text-[11px] sm:text-xs text-muted-foreground">Welcome back Jibril</span></div>
+          <div className="flex min-w-0 flex-col"><span className="text-2xl sm:text-3xl font-bold tracking-wide">AlgoGuardian</span><span className="text-xs sm:text-sm text-muted-foreground">Welcome back, {firstName}</span></div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <button
@@ -137,7 +138,7 @@ const Index = () => {
             <section className="rounded-xl border border-border bg-card p-6">
               <div className="flex items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary"><UserRound className="h-7 w-7" /></div>
-                <div><h1 className="text-xl font-semibold">Jibril</h1><p className="text-sm text-muted-foreground">Account</p></div>
+                <div><h1 className="text-xl font-semibold">{firstName}</h1><p className="text-sm text-muted-foreground">Account</p></div>
               </div>
             </section>
           )}
