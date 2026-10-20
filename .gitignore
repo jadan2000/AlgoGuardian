@@ -31,3 +31,7 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+
+# Encrypted broker credentials managed by the Accounts page
+BACKEND/storage/mt5_credentials.enc
+BACKEND/storage/mt5_credentials.tmp
