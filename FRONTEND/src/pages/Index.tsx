@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sun, Moon, UserRound, LogOut } from "lucide-react";
+import { Sun, Moon, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import AccountOverview from "@/components/dashboard/AccountOverview";
@@ -116,7 +116,7 @@ const Index = () => {
               )}
             </button>
 
-            <button type="button" onClick={() => setActiveTab("account")} aria-label="Open account page" title="Account" className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary"><UserRound className="h-4 w-4" /></button><button type="button" onClick={() => void signOut().then(() => window.location.assign("/login")).catch((error) => toast.error(error.message))} className="flex items-center gap-2 rounded-md border border-border px-2 sm:px-3 py-2 text-xs font-medium hover:bg-secondary"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <button type="button" onClick={() => setActiveTab("accounts")} aria-label="Open accounts page" title="Accounts" className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary"><UserRound className="h-4 w-4" /></button><button type="button" onClick={() => void signOut().then(() => window.location.assign("/login")).catch((error) => toast.error(error.message))} className="flex items-center gap-2 rounded-md border border-border px-2 sm:px-3 py-2 text-xs font-medium hover:bg-secondary"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
               <div className={`h-2 w-2 rounded-full ${mt5Connected ? "bg-green-500" : "bg-red-500"}`} />
               {mt5Connected ? "MT5 Connected" : "MT5 Disconnected"}
             </div>
@@ -153,14 +153,6 @@ const Index = () => {
 
           {activeTab === "accounts" && <AccountsPage />}
 
-          {activeTab === "account" && (
-            <section className="rounded-xl border border-border bg-card p-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary"><UserRound className="h-7 w-7" /></div>
-                <div><h1 className="text-xl font-semibold">{firstName}</h1><p className="text-sm text-muted-foreground">Account</p></div>
-              </div>
-            </section>
-          )}
         </main>
       </div>
     </div>
