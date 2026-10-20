@@ -26,7 +26,8 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
 
-ACTIVATION_AMOUNT = 1000
+# Temporary test fee only. Restore to 1000 before production launch.
+ACTIVATION_AMOUNT = 1
 PHONE_RE = re.compile(r"^254(?:7|1)\d{8}$")
 
 
