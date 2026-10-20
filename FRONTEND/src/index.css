@@ -185,3 +185,16 @@
     animation: fade-in-up 0.4s ease-out forwards;
   }
 }
+
+
+/* Smooth entrance transitions between authentication, activation, and dashboard pages. */
+@keyframes page-enter-motion {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-enter-motion 260ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none; }
+}
