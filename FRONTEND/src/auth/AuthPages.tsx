@@ -213,7 +213,6 @@ export function ActivationPage() {
       <div className="mt-6 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-5">
         <p className="text-sm text-slate-400">Activation fee</p>
         <p className="mt-1 text-3xl font-semibold text-amber-300">KSh 1</p>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-200">Testing only</p>
         <p className="mt-2 text-xs text-slate-500">Pay securely through M-Pesa STK Push.</p>
       </div>
       {profile?.activation_status !== "suspended" && <>
@@ -223,7 +222,7 @@ export function ActivationPage() {
           {paymentMessage && <div role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{paymentMessage}</div>}
           <button type="submit" disabled={paying} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 font-semibold text-black hover:bg-amber-200 disabled:opacity-50">
             {paying ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-            {paying ? "Sending STK Push…" : "Pay KSh 1 with M-Pesa (Testing)"}
+            {paying ? "Sending STK Push…" : "Pay KSh 1 with M-Pesa"}
           </button>
         </form>
         <button onClick={() => void checkStatus()} disabled={checking} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-4 font-medium text-slate-200 hover:bg-white/5 disabled:opacity-50">
