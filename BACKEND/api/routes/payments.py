@@ -74,6 +74,8 @@ def _current_user(access_token: str) -> dict:
             headers={"apikey": anon_key, "Authorization": f"Bearer {access_token}"},
         )
     except HTTPException as exc:
+        if exc.status_code == 503:
+            raise
         raise HTTPException(status_code=401, detail="Your session is invalid or expired. Please sign in again.") from exc
     if not user.get("id"):
         raise HTTPException(status_code=401, detail="Your session is invalid. Please sign in again.")
