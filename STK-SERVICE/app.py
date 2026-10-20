@@ -5,7 +5,7 @@ import os
 import re
 from datetime import datetime
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, urlsplit
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
@@ -49,9 +49,14 @@ def json_request(url: str, method: str = "GET", headers: dict | None = None, pay
             raw = response.read().decode("utf-8")
             return json.loads(raw) if raw else {}
     except HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"Upstream request failed (HTTP {exc.code}).") from exc
+        host = urlsplit(url).hostname or "upstream"
+        # Safe diagnostics: never log request headers, tokens, response bodies, or phone numbers.
+        print(f"Upstream HTTP error: host={host} status={exc.code}")
+        raise HTTPException(status_code=502, detail=f"Upstream request failed (HTTP {exc.code}) at {host}.") from exc
     except (URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
-        raise HTTPException(status_code=502, detail="Could not reach a required service. Try again later.") from exc
+        host = urlsplit(url).hostname or "upstream"
+        print(f"Upstream connection/response error: host={host} type={type(exc).__name__}")
+        raise HTTPException(status_code=502, detail=f"Could not reach or parse response from {host}.") from exc
 
 
 def daraja_base() -> str:
