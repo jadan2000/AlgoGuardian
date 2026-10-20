@@ -10,11 +10,19 @@ from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request as FastAPIRequest
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 load_dotenv()
 
 app = FastAPI(title="AlgoGuardian STK Payments API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in (os.getenv("FRONTEND_ORIGINS") or "").split(",") if origin.strip()],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+)
+
 ACTIVATION_AMOUNT = 1000
 PHONE_RE = re.compile(r"^254(?:7|1)\d{8}$")
 
@@ -97,6 +105,19 @@ def normalize_phone(value: str) -> str:
     return phone
 
 
+def current_supabase_user(authorization: str | None) -> dict:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Sign in to continue.")
+    token = authorization.split(" ", 1)[1].strip()
+    user = json_request(
+        env("SUPABASE_URL").rstrip("/") + "/auth/v1/user",
+        headers={"apikey": env("SUPABASE_ANON_KEY"), "Authorization": f"Bearer {token}"},
+    )
+    if not user.get("id"):
+        raise HTTPException(status_code=401, detail="Your session is invalid or expired. Sign in again.")
+    return user
+
+
 def check_api_key(provided: str | None):
     expected = env("STK_API_KEY")
     if not provided or not hmac.compare_digest(provided, expected):
@@ -111,6 +132,16 @@ def health():
 @app.post("/api/stk-push")
 def start_stk_push(body: STKPushRequest, x_api_key: str | None = Header(default=None)):
     check_api_key(x_api_key)
+    return _start_stk_push(body, user_id=None)
+
+
+@app.post("/api/website/stk-push")
+def website_stk_push(body: STKPushRequest, authorization: str | None = Header(default=None)):
+    user = current_supabase_user(authorization)
+    return _start_stk_push(body, user_id=user["id"])
+
+
+def _start_stk_push(body: STKPushRequest, user_id: str | None):
     phone = normalize_phone(body.phone_number)
     till = env("DARAJA_TILL_NUMBER")
     callback_url = env("STK_CALLBACK_URL")
@@ -125,7 +156,7 @@ def start_stk_push(body: STKPushRequest, x_api_key: str | None = Header(default=
     rows = supabase_request(
         "stk_transactions",
         method="POST",
-        payload={"phone_number": phone, "amount": ACTIVATION_AMOUNT, "status": "initiating"},
+        payload={"phone_number": phone, "amount": ACTIVATION_AMOUNT, "status": "initiating", **({"user_id": user_id} if user_id else {})},
         prefer="return=representation",
     )
     if not isinstance(rows, list) or not rows:
@@ -204,7 +235,7 @@ async def payment_callback(request: FastAPIRequest):
     rows = supabase_request(
         "stk_transactions?" + urlencode({
             "checkout_request_id": f"eq.{checkout_id}",
-            "select": "id,phone_number,amount,status",
+            "select": "id,user_id,phone_number,amount,status",
             "limit": "1",
         })
     )
@@ -256,4 +287,14 @@ async def payment_callback(request: FastAPIRequest):
         },
         prefer="return=minimal",
     )
+    # Only website-originated transactions are tied to an account. Activate after
+    # successful Daraja query plus amount, phone, and receipt validation above.
+    user_id = payment.get("user_id")
+    if user_id:
+        supabase_request(
+            f"profiles?id=eq.{quote(str(user_id))}",
+            method="PATCH",
+            payload={"activation_status": "active"},
+            prefer="return=minimal",
+        )
     return {"ResultCode": 0, "ResultDesc": "Callback received"}
