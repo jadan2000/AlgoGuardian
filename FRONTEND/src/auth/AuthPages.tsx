@@ -135,7 +135,8 @@ export function RegisterPage() {
 export function ActivationPage() {
   const { user, profile, loading, refreshProfile, signOut } = useAuth();
   const [phone, setPhone] = useState("");
-  const [checking, setChecking] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [retryAvailable, setRetryAvailable] = useState(false);
   const [paying, setPaying] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [error, setError] = useState("");
@@ -145,27 +146,37 @@ export function ActivationPage() {
   if (profile?.activation_status === "active") return <Navigate to="/" replace />;
 
   const stkApiBase = "https://algoguardian-stk-api.onrender.com";
-  const checkStatus = async () => {
-    setChecking(true);
-    try {
-      const next = await refreshProfile();
-      if (next?.activation_status === "active") {
-        toast.success("Your account is activated.");
-        window.location.assign("/");
-      } else if (!next) {
-        toast.error("We could not load your activation status. Check your Supabase setup.");
-      } else {
-        toast.info("Your payment or activation is still being processed.");
+  const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+
+  const pollForActivation = async () => {
+    setProcessing(true);
+    setRetryAvailable(false);
+    setPaymentMessage("Processing payment… Please approve the M-Pesa prompt on your phone. We’ll verify it automatically.");
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      await wait(3_000);
+      try {
+        const next = await refreshProfile();
+        if (next?.activation_status === "active") {
+          toast.success("Your account is activated.");
+          window.location.assign("/");
+          return;
+        }
+      } catch {
+        // Keep polling until the 30-second verification window ends.
       }
-    } finally {
-      setChecking(false);
     }
+    setProcessing(false);
+    setRetryAvailable(true);
+    setPaymentMessage("");
+    setError("We couldn’t verify your payment within 30 seconds. If you approved the M-Pesa prompt, wait a moment and try checking again; otherwise, try the payment again.");
   };
 
   const startPayment = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
     setPaymentMessage("");
+    setRetryAvailable(false);
     if (!supabase) {
       setError("Authentication is not configured. Please contact support.");
       return;
@@ -191,8 +202,9 @@ export function ActivationPage() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.detail || result.message || "Could not start M-Pesa payment.");
-      setPaymentMessage(result.message || "STK Push sent. Enter your M-Pesa PIN on your phone, then check your activation status.");
+      setPaymentMessage(result.message || "STK Push sent.");
       toast.success("M-Pesa payment request sent.");
+      void pollForActivation();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Payment could not be started.");
     } finally {
@@ -219,15 +231,13 @@ export function ActivationPage() {
         <form onSubmit={startPayment} className="mt-6 space-y-4">
           <Field label="M-Pesa phone number" type="tel" autoComplete="tel" inputMode="tel" placeholder="0712345678" value={phone} onChange={e => setPhone(e.target.value)} required />
           {error && <AuthError message={error} />}
-          {paymentMessage && <div role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{paymentMessage}</div>}
-          <button type="submit" disabled={paying} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 font-semibold text-black hover:bg-amber-200 disabled:opacity-50">
+          {paymentMessage && <div role="status" aria-live="polite" className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 text-sm text-amber-100">{processing && <LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />} {paymentMessage}</div>}
+          <button type="submit" disabled={paying || processing} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 font-semibold text-black hover:bg-amber-200 disabled:opacity-50">
             {paying ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-            {paying ? "Sending STK Push…" : "Pay KSh 1 with M-Pesa"}
+            {paying ? "Sending STK Push…" : processing ? "Processing payment…" : retryAvailable ? "Try again" : "Pay KSh 1 with M-Pesa"}
           </button>
         </form>
-        <button onClick={() => void checkStatus()} disabled={checking} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-4 font-medium text-slate-200 hover:bg-white/5 disabled:opacity-50">
-          {checking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} Check payment / activation status
-        </button>
+  
       </>}
       <button onClick={() => void signOut().then(() => window.location.assign("/login")).catch(e => toast.error(e.message))} className="mt-3 w-full rounded-lg border border-white/10 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">Sign out</button>
     </AuthLayout>
