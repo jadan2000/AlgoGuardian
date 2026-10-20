@@ -5,6 +5,7 @@ import {
   Settings,
   FileText,
   UserRound,
+  WalletCards,
 } from "lucide-react";
 
 type Props = {
@@ -19,6 +20,7 @@ export default function Sidebar({ activeTab, setActiveTab }: Props) {
     { id: "analytics", label: "Analytics", icon: LineChart },
     { id: "settings", label: "Settings", icon: Settings },
     { id: "logs", label: "Logs", icon: FileText },
+    { id: "accounts", label: "Accounts", icon: WalletCards },
   ];
 
   return (
@@ -68,6 +70,18 @@ export default function Sidebar({ activeTab, setActiveTab }: Props) {
               </button>
             );
           })}
+          <button
+            onClick={() => setActiveTab("accounts")}
+            aria-label="Open broker accounts"
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${
+              activeTab === "accounts"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-secondary"
+            }`}
+          >
+            <WalletCards className="h-4 w-4" />
+            Accounts
+          </button>
           <button
             onClick={() => setActiveTab("account")}
             aria-label="Open account page"
