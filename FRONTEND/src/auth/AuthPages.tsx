@@ -144,7 +144,7 @@ export function ActivationPage() {
   if (!user) return <Navigate to="/login" replace />;
   if (profile?.activation_status === "active") return <Navigate to="/" replace />;
 
-  const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "");
+  const stkApiBase = "https://algoguardian-stk-api.onrender.com";
   const checkStatus = async () => {
     setChecking(true);
     try {
@@ -166,8 +166,8 @@ export function ActivationPage() {
     event.preventDefault();
     setError("");
     setPaymentMessage("");
-    if (!apiBase) {
-      setError("Payment service is not configured. Please contact support.");
+    if (!supabase) {
+      setError("Authentication is not configured. Please contact support.");
       return;
     }
     const normalizedPhone = phone.replace(/[\s()-]/g, "");
@@ -178,11 +178,14 @@ export function ActivationPage() {
     const mpesaPhone = normalizedPhone.startsWith("+") ? normalizedPhone.slice(1) : normalizedPhone.startsWith("0") ? "254" + normalizedPhone.slice(1) : normalizedPhone;
     setPaying(true);
     try {
-      const response = await fetch(apiBase + "/api/payments/stk-push", {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (sessionError || !accessToken) throw new Error("Your session has expired. Sign in again.");
+      const response = await fetch(stkApiBase + "/api/website/stk-push", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(supabase ? { Authorization: "Bearer " + (await supabase.auth.getSession()).data.session?.access_token } : {}),
+          Authorization: "Bearer " + accessToken,
         },
         body: JSON.stringify({ phone_number: mpesaPhone }),
       });
