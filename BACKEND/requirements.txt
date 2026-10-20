@@ -5,3 +5,4 @@ python-dotenv
 pandas
 ta
 MetaTrader5
+cryptography
