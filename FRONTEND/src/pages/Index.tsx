@@ -22,7 +22,7 @@ import { toast } from "sonner";
 const Index = () => {
   const { theme, setTheme } = useTheme();
   const { signOut, profile, user } = useAuth();
-  const firstName = (profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "there").trim().split(/\\s+/)[0];
+  const firstName = (profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "there").trim().split(/\s+/)[0];
 
    useEffect(() => {
      console.log("useEffect running");
