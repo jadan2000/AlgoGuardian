@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sun, Moon, LogOut } from "lucide-react";
+import { Sun, Moon, UserRound, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import AccountOverview from "@/components/dashboard/AccountOverview";
