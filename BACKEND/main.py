@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from threading import Thread
+import os
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
@@ -32,7 +33,7 @@ app = FastAPI(title="Trading Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+    allow_origins=list(filter(None, (os.getenv("FRONTEND_ORIGINS", "")).split(","))) + [
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "http://localhost:5173",
