@@ -57,7 +57,12 @@ The trading engine, settings defaults, and MT5-sourced trade history are not cha
 
 1. Run the updated `AUTH/supabase_profiles.sql` in Supabase SQL Editor. It creates the `mpesa_payments` table used by the backend.
 2. Copy `BACKEND/.env.example` to `BACKEND/.env` and fill in the Supabase URL, anon key, service-role key, and Daraja sandbox credentials. Keep this file private and never use the service-role key in the frontend.
-3. Set `MPESA_CALLBACK_URL` to a publicly reachable HTTPS URL ending in `/api/payments/callback`. Localhost is not reachable by Safaricom; use a temporary HTTPS tunnel for development or a deployed backend.
+3. Set `STK_CALLBACK_URL` to a publicly reachable HTTPS URL ending in `/api/payments/callback`. Localhost is not reachable by Safaricom; use a temporary HTTPS tunnel for development or a deployed backend.
 4. Run the FastAPI backend and test with Daraja sandbox test numbers first. Sandbox acceptance only means the prompt request was accepted; test the callback and database updates too.
-5. The current activation price is KSh 1,000. Do not switch `MPESA_ENVIRONMENT` to `production` until Safaricom has approved the shortcode, credentials and production access.
+5. The current activation price is KSh 1,000. Do not switch `DARAJA_ENV` to `production` until Safaricom has approved the shortcode, credentials and production access.
 6. Payment callback processing currently matches the stored checkout request, expected phone and amount before activating a pending profile. Before accepting real customer payments, add a Daraja STK-query reconciliation step and operational monitoring for callbacks that fail to arrive.
+
+
+### Daraja request format
+
+The backend STK request follows the working integration supplied for AlgoGuardian: OAuth uses `DARAJA_CONSUMER_KEY` and `DARAJA_CONSUMER_SECRET`; `DARAJA_ENV` selects sandbox or production; the payload uses `CustomerBuyGoodsOnline`, `DARAJA_SHORTCODE` as `BusinessShortCode`, and `DARAJA_TILL_NUMBER` as `PartyB`. The activation amount remains fixed at KSh 1,000.
