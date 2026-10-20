@@ -53,3 +53,30 @@ create trigger on_auth_user_created
 -- an account only after the product's subscription/payment checks are implemented.
 revoke update on public.profiles from authenticated;
 grant select on public.profiles to authenticated;
+
+
+-- M-Pesa activation payments. Run this migration in Supabase SQL Editor.
+create table if not exists public.mpesa_payments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete restrict,
+  phone_number text not null,
+  amount integer not null check (amount = 1000),
+  currency text not null default 'KES' check (currency = 'KES'),
+  status text not null default 'pending'
+    check (status in ('pending', 'paid', 'failed', 'review')),
+  checkout_request_id text unique,
+  merchant_request_id text,
+  mpesa_receipt_number text unique,
+  result_code integer,
+  result_description text,
+  transaction_date text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists mpesa_payments_user_status_idx
+  on public.mpesa_payments (user_id, status, created_at desc);
+
+alter table public.mpesa_payments enable row level security;
+-- Payment records are only read/written by the trusted backend service role.
+revoke all on public.mpesa_payments from anon, authenticated;
