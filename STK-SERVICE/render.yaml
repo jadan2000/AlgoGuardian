@@ -26,3 +26,7 @@ services:
         sync: false
       - key: STK_API_KEY
         sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: STK_CALLBACK_URL
+        sync: false
