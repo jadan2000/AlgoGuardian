@@ -108,6 +108,23 @@ def _stk_password(shortcode: str, passkey: str, timestamp: str) -> str:
     return base64.b64encode(raw).decode()
 
 
+def _query_stk_status(checkout_id: str, shortcode: str, passkey: str) -> dict:
+    """Ask Daraja for the transaction status before trusting a callback."""
+    token = _daraja_access_token()
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    return _request_json(
+        _daraja_base() + "/mpesa/stkpushquery/v1/query",
+        method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        payload={
+            "BusinessShortCode": shortcode,
+            "Password": _stk_password(shortcode, passkey, timestamp),
+            "Timestamp": timestamp,
+            "CheckoutRequestID": checkout_id,
+        },
+    )
+
+
 @router.post("/stk-push")
 def start_stk_push(
     body: STKPushRequest,
@@ -228,6 +245,22 @@ async def mpesa_callback(request: FastAPIRequest):
     payment = matches[0]
     if payment.get("status") != "pending":
         return {"ResultCode": 0, "ResultDesc": "Callback already processed"}
+
+    environment = (os.getenv("DARAJA_ENV") or "sandbox").strip().lower()
+    shortcode = (os.getenv("DARAJA_SHORTCODE") or ("174379" if environment == "sandbox" else "")).strip()
+    passkey = _env("DARAJA_PASSKEY")
+    if not shortcode:
+        return {"ResultCode": 0, "ResultDesc": "Callback received"}
+
+    try:
+        query_result = _query_stk_status(checkout_id, shortcode, passkey)
+    except HTTPException:
+        # A temporary Daraja query failure must never cause activation.
+        return {"ResultCode": 0, "ResultDesc": "Callback received"}
+
+    # Daraja's query endpoint must independently confirm a successful transaction.
+    if str(query_result.get("ResponseCode")) != "0" or str(query_result.get("ResultCode")) != "0":
+        return {"ResultCode": 0, "ResultDesc": "Callback received"}
 
     if result_code != 0:
         _supabase_rest(
