@@ -3,7 +3,6 @@ import MetaTrader5 as mt5
 import json
 from pathlib import Path
 
-from config import MT5_LOGIN, MT5_PASSWORD, MT5_SERVER, MT5_PATH
 from services.config_service import load_config
 from services import bot_state
 from engine.session_manager import SessionManager
