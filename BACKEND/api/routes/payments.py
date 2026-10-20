@@ -17,7 +17,7 @@ PHONE_RE = re.compile(r"^254(?:7|1)\d{8}$")
 
 
 class STKPushRequest(BaseModel):
-    phone_number: str = Field(min_length=12, max_length=12)
+    phone_number: str = Field(min_length=12, max_length=13)
 
 
 def _env(name: str) -> str:
@@ -83,17 +83,17 @@ def _current_user(access_token: str) -> dict:
 
 
 def _daraja_base() -> str:
-    environment = (os.getenv("MPESA_ENVIRONMENT") or "sandbox").strip().lower()
+    environment = (os.getenv("DARAJA_ENV") or "sandbox").strip().lower()
     if environment == "sandbox":
         return "https://sandbox.safaricom.co.ke"
     if environment == "production":
         return "https://api.safaricom.co.ke"
-    raise HTTPException(status_code=503, detail="MPESA_ENVIRONMENT must be sandbox or production.")
+    raise HTTPException(status_code=503, detail="DARAJA_ENV must be sandbox or production.")
 
 
 def _daraja_access_token() -> str:
-    consumer_key = _env("MPESA_CONSUMER_KEY")
-    consumer_secret = _env("MPESA_CONSUMER_SECRET")
+    consumer_key = _env("DARAJA_CONSUMER_KEY")
+    consumer_secret = _env("DARAJA_CONSUMER_SECRET")
     encoded = base64.b64encode(f"{consumer_key}:{consumer_secret}".encode()).decode()
     url = _daraja_base() + "/oauth/v1/generate?" + urlencode({"grant_type": "client_credentials"})
     result = _request_json(url, headers={"Authorization": f"Basic {encoded}"})
@@ -119,9 +119,14 @@ def start_stk_push(
     user = _current_user(access_token)
     user_id = user["id"]
 
-    phone = body.phone_number.strip()
+    raw_phone = body.phone_number.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if raw_phone.startswith("+"):
+        raw_phone = raw_phone[1:]
+    if raw_phone.startswith("0"):
+        raw_phone = "254" + raw_phone[1:]
+    phone = raw_phone
     if not PHONE_RE.fullmatch(phone):
-        raise HTTPException(status_code=422, detail="Use a Kenyan M-Pesa number in 2547XXXXXXXX or 2541XXXXXXXX format.")
+        raise HTTPException(status_code=422, detail="Enter a valid Kenyan Safaricom or M-PESA phone number.")
 
     # Check the profile server-side; never trust activation state sent by the browser.
     profiles = _supabase_rest(
@@ -141,11 +146,20 @@ def start_stk_push(
     if isinstance(pending, list) and pending:
         raise HTTPException(status_code=409, detail="A payment request is already pending. Complete it or wait for its result before retrying.")
 
-    shortcode = _env("MPESA_BUSINESS_SHORTCODE")
-    passkey = _env("MPESA_PASSKEY")
-    callback_url = _env("MPESA_CALLBACK_URL")
-    if not callback_url.startswith("https://"):
-        raise HTTPException(status_code=503, detail="MPESA_CALLBACK_URL must be a public HTTPS URL.")
+    environment = (os.getenv("DARAJA_ENV") or "sandbox").strip().lower()
+    shortcode = (os.getenv("DARAJA_SHORTCODE") or ("174379" if environment == "sandbox" else "")).strip()
+    passkey = _env("DARAJA_PASSKEY")
+    callback_url = _env("STK_CALLBACK_URL")
+    if not shortcode:
+        raise HTTPException(status_code=503, detail="DARAJA_SHORTCODE is required in production.")
+    if environment == "production" and not callback_url.startswith("https://"):
+        raise HTTPException(status_code=503, detail="STK_CALLBACK_URL must be a public HTTPS URL in production.")
+    if environment == "production" and not (os.getenv("PUBLIC_BASE_URL") or "").startswith("https://"):
+        raise HTTPException(status_code=503, detail="PUBLIC_BASE_URL must be a public HTTPS URL in production.")
+
+    till_number = (os.getenv("DARAJA_TILL_NUMBER") or "").strip()
+    if not till_number:
+        raise HTTPException(status_code=503, detail="DARAJA_TILL_NUMBER is required for Buy Goods STK Push.")
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     token = _daraja_access_token()
@@ -157,14 +171,14 @@ def start_stk_push(
             "BusinessShortCode": shortcode,
             "Password": _stk_password(shortcode, passkey, timestamp),
             "Timestamp": timestamp,
-            "TransactionType": os.getenv("MPESA_TRANSACTION_TYPE", "CustomerPayBillOnline"),
+            "TransactionType": "CustomerBuyGoodsOnline",
             "Amount": ACTIVATION_AMOUNT,
             "PartyA": phone,
-            "PartyB": shortcode,
+            "PartyB": till_number,
             "PhoneNumber": phone,
             "CallBackURL": callback_url,
-            "AccountReference": "ALGOGUARDIAN",
-            "TransactionDesc": "Account activation",
+            "AccountReference": "AlgoGuardian",
+            "TransactionDesc": "AlgoGuardian activation",
         },
     )
 
