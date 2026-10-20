@@ -170,8 +170,8 @@ export function ActivationPage() {
       setError("Payment service is not configured. Please contact support.");
       return;
     }
-    const normalizedPhone = phone.replace(/[\\s()-]/g, "");
-    if (!/^(?:\\+254|254|0)7\\d{8}$/.test(normalizedPhone) && !/^(?:\\+254|254|0)1\\d{8}$/.test(normalizedPhone)) {
+    const normalizedPhone = phone.replace(/[\s()-]/g, "");
+    if (!/^(?:\+254|254|0)[17]\d{8}$/.test(normalizedPhone)) {
       setError("Enter a valid Kenyan M-Pesa number, for example 0712345678.");
       return;
     }
