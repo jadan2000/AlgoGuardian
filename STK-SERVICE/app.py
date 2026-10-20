@@ -49,10 +49,31 @@ def json_request(url: str, method: str = "GET", headers: dict | None = None, pay
             raw = response.read().decode("utf-8")
             return json.loads(raw) if raw else {}
     except HTTPError as exc:
-        host = urlsplit(url).hostname or "upstream"
-        # Safe diagnostics: never log request headers, tokens, response bodies, or phone numbers.
-        print(f"Upstream HTTP error: host={host} status={exc.code}")
-        raise HTTPException(status_code=502, detail=f"Upstream request failed (HTTP {exc.code}) at {host}.") from exc
+        parsed = urlsplit(url)
+        host = parsed.hostname or "upstream"
+        path = parsed.path or "/"
+        # Read only safe, allow-listed error fields. Never log headers, tokens,
+        # phone numbers, query strings, or an unfiltered upstream response body.
+        safe_code = "unknown"
+        safe_message = "no safe error message returned"
+        try:
+            error_body = json.loads(exc.read().decode("utf-8", errors="replace"))
+            if isinstance(error_body, dict):
+                safe_code = str(error_body.get("code") or error_body.get("error") or "unknown")[:100]
+                safe_message = str(
+                    error_body.get("msg")
+                    or error_body.get("message")
+                    or error_body.get("error_description")
+                    or "no safe error message returned"
+                )[:240]
+        except (ValueError, OSError):
+            pass
+        # Do not include the URL query string: it can contain sensitive values.
+        print(
+            f"Upstream HTTP error: method={method} host={host} path={path} "
+            f"status={exc.code} error_code={safe_code!r} message={safe_message!r}"
+        )
+        raise HTTPException(status_code=502, detail=f"Upstream request failed (HTTP {exc.code}) at {host}{path}.") from exc
     except (URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
         host = urlsplit(url).hostname or "upstream"
         print(f"Upstream connection/response error: host={host} type={type(exc).__name__}")
