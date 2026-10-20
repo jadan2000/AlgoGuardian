@@ -151,7 +151,7 @@ export function ActivationPage() {
   const pollForActivation = async () => {
     setProcessing(true);
     setRetryAvailable(false);
-    setPaymentMessage("Processing payment… Please approve the M-Pesa prompt on your phone. We’ll verify it automatically.");
+    setPaymentMessage("Processing payment… Please approve the M-Pesa prompt on your phone.");
     const deadline = Date.now() + 30_000;
     while (Date.now() < deadline) {
       await wait(3_000);
@@ -169,7 +169,7 @@ export function ActivationPage() {
     setProcessing(false);
     setRetryAvailable(true);
     setPaymentMessage("");
-    setError("We couldn’t verify your payment within 30 seconds. If you approved the M-Pesa prompt, wait a moment and try checking again; otherwise, try the payment again.");
+    setError("Payment not verified.");
   };
 
   const startPayment = async (event: React.FormEvent) => {
