@@ -2,6 +2,7 @@
 create table if not exists public.stk_transactions (
   id uuid primary key default gen_random_uuid(),
   app_name text not null default 'algoguardian' check (app_name = 'algoguardian'),
+  user_id uuid references auth.users(id) on delete set null,
   phone_number text not null,
   amount integer not null check (amount > 0),
   currency text not null default 'KES' check (currency = 'KES'),
@@ -17,3 +18,6 @@ create table if not exists public.stk_transactions (
 create index if not exists stk_transactions_status_created_idx on public.stk_transactions(status, created_at desc);
 alter table public.stk_transactions enable row level security;
 revoke all on public.stk_transactions from anon, authenticated;
+
+-- Safe to run on an existing table too.
+alter table public.stk_transactions add column if not exists user_id uuid references auth.users(id) on delete set null;
