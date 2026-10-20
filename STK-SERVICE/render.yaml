@@ -30,3 +30,7 @@ services:
         sync: false
       - key: STK_CALLBACK_URL
         sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
