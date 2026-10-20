@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { AlertCircle, CheckCircle2, CircleHelp, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, RefreshCw, Server, ShieldCheck, Unplug, WalletCards, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
@@ -105,7 +106,7 @@ export default function AccountsPage() {
     }
   };
 
-  const saveCredentials = async (event: React.FormEvent<HTMLFormElement>) => {
+  const saveCredentials = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
     setError("");
