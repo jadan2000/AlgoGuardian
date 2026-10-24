@@ -7,11 +7,11 @@ import MarketOverview from "@/components/dashboard/MarketOverview";
 import TradeActivity from "@/components/dashboard/TradeActivity";
 import LiveTradeMovement from "@/components/dashboard/LiveTradeMovement";
 import AnalyticsPanel from "@/components/dashboard/AnalyticsPanel";
-import StrategySignalsPanel from "@/components/dashboard/StrategySignalsPanel";
 import BotStatus from "@/components/dashboard/BotStatus";
 import { SettingsPanel } from "@/components/dashboard/SettingsPanel";
 import { LogsPanel } from "@/components/dashboard/LogsPanel";
 import AccountsPage from "@/components/dashboard/AccountsPage";
+import HowToUsePage from "@/components/dashboard/HowToUsePage";
 import Sidebar from "@/components/layout/Sidebar";
 
 import { useEffect, useRef } from "react";
@@ -175,8 +175,6 @@ const Index = () => {
             </>
           )}
 
-          {activeTab === "strategies" && <StrategySignalsPanel />}
-
           {activeTab === "analytics" && <AnalyticsPanel />}
 
           {activeTab === "settings" && <SettingsPanel />}
@@ -184,6 +182,8 @@ const Index = () => {
           {activeTab === "logs" && <LogsPanel />}
 
           {activeTab === "accounts" && <AccountsPage />}
+
+          {activeTab === "how-to-use" && <HowToUsePage />}
 
         </main>
       </div>
