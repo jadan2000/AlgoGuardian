@@ -1,0 +1,34 @@
+name: Remote relay checks
+
+on:
+  push:
+    branches:
+      - feature/free-supabase-notification-relay
+  pull_request:
+    branches:
+      - feature/free-supabase-notification-relay
+
+jobs:
+  mobile-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: NOTIFICATIONS
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: NOTIFICATIONS/package.json
+      - run: npm install
+      - run: npm run typecheck
+
+  python-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m compileall -q BACKEND
