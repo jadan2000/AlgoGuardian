@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
+import * as NavigationBar from "expo-navigation-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
@@ -83,6 +84,13 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState("");
   const [apiError, setApiError] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    // Keep Android's system navigation bar hidden; the app's own pill nav remains visible.
+    void NavigationBar.setBehaviorAsync("overlay-swipe").catch(() => undefined);
+    void NavigationBar.setVisibilityAsync("hidden").catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -589,7 +597,7 @@ const styles = StyleSheet.create({
   alertBody: { color: "#B5C1D2", fontSize: 12, lineHeight: 18, marginTop: 4 },
   alertTime: { color: "#6F8098", fontSize: 9, marginTop: 6 },
   status: { color: C.text, fontSize: 14, fontWeight: "700" },
-  tabbar: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", backgroundColor: "#15120B", borderColor: "#5A451D", borderWidth: 1, borderBottomWidth: 0, borderRadius: 0, paddingHorizontal: 3, paddingTop: 8, paddingBottom: 0, minHeight: 66, elevation: 12 },
+  tabbar: { position: "absolute", left: 8, right: 8, bottom: 0, flexDirection: "row", alignItems: "center", backgroundColor: "#15120B", borderColor: "#5A451D", borderWidth: 1, borderRadius: 30, paddingHorizontal: 3, paddingTop: 8, paddingBottom: 0, minHeight: 66, elevation: 12 },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 5, borderRadius: 24 },
   tabIcon: { fontSize: 19, lineHeight: 23 },
   tabLabel: { fontSize: 7, fontWeight: "900", letterSpacing: 0.25, textAlign: "center", includeFontPadding: false },
