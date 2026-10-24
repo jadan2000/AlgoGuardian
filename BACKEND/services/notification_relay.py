@@ -92,6 +92,6 @@ def remove_remote_device(token: str) -> None:
     relay_post("/v1/devices/remove", {"token": token})
 
 
-def send_remote_notification(event: str, message: str) -> None:
-    # The relay validates the event and creates its own generic message.
-    relay_post("/v1/notifications/send", {"event": event, "message": message[:240]})
+def send_remote_notification(event: str, message: str) -> dict:
+    # Return the relay's sent/failed counts so backend logs expose delivery attempts.
+    return relay_post("/v1/notifications/send", {"event": event, "message": message[:240]})
