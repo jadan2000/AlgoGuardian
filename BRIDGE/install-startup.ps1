@@ -1,6 +1,11 @@
 $ErrorActionPreference = "Stop"
 $BridgeDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Python = (Get-Command python.exe -ErrorAction Stop).Source
+$VenvPython = Join-Path $BridgeDir ".venv\Scripts\python.exe"
+if (Test-Path $VenvPython) {
+    $Python = $VenvPython
+} else {
+    $Python = (Get-Command python.exe -ErrorAction Stop).Source
+}
 $Startup = [Environment]::GetFolderPath("Startup")
 $ShortcutPath = Join-Path $Startup "AlgoGuardian Bridge.lnk"
 $Shell = New-Object -ComObject WScript.Shell
