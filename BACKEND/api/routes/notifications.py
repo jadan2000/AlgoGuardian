@@ -3,7 +3,6 @@ import base64
 import io
 import json
 import os
-import socket
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -12,9 +11,9 @@ from api.auth import require_authenticated_user
 from services.notification_devices import (
     NotificationRegistryError, list_devices, register_device, remove_device,
 )
-from services.notification_pairing import consume_code, create_code
+from services.notification_pairing import consume_code
 from services.notification_relay import (
-    NotificationRelayError, ensure_registered, register_remote_device, remove_remote_device,
+    NotificationRelayError, create_remote_pairing, ensure_registered, register_remote_device, remove_remote_device,
 )
 
 router = APIRouter()
@@ -35,24 +34,13 @@ def create_pairing_session(request: Request, _user: dict = Depends(require_authe
     """Create a short-lived code for a QR displayed by the signed-in Windows dashboard."""
     if not (os.getenv("NOTIFICATION_RELAY_URL") or "").strip().startswith("https://"):
         raise HTTPException(status_code=503, detail="Supabase notification relay is not configured. Set NOTIFICATION_RELAY_URL in the private backend .env and restart.")
-    base_url = str(request.base_url).rstrip("/")
-    hostname = request.url.hostname or ""
-    if hostname.lower() in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}:
-        try:
-            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                probe.connect(("8.8.8.8", 80))
-                hostname = probe.getsockname()[0]
-            finally:
-                probe.close()
-            base_url = f"{request.url.scheme}://{hostname}:{request.url.port or 8000}"
-        except OSError:
-            # Keep the configured host if local interface discovery is unavailable.
-            pass
-    pairing = create_code(base_url)
+    try:
+        pairing = create_remote_pairing()
+    except NotificationRelayError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     payload = json.dumps({
         "type": "algoguardian-pair",
-        "backendUrl": pairing["backend_url"],
+        "relayUrl": (os.getenv("NOTIFICATION_RELAY_URL") or "").strip().rstrip("/"),
         "code": pairing["code"],
     }, separators=(",", ":"))
     try:
