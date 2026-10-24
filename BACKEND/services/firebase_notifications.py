@@ -1,7 +1,6 @@
 """Best-effort notification-only relay client; never carries trading or broker data."""
 import threading
 
-from services.notification_devices import registered_tokens
 from services.notification_relay import NotificationRelayError, send_remote_notification
 
 _EVENT_MESSAGES = {
@@ -19,24 +18,23 @@ _EVENT_MESSAGES = {
 
 def _send(event: str) -> None:
     try:
+        # The Supabase relay is the source of truth for remotely paired phones.
         # Only fixed generic messages leave the PC; never forward symbols,
         # order tickets, prices, strategy details, or caller-provided text.
-        send_remote_notification(event, _EVENT_MESSAGES[event])
+        result = send_remote_notification(event, _EVENT_MESSAGES[event])
+        print(f"[FCM relay] Send request completed for {event}: {result}")
     except NotificationRelayError as exc:
         # Push failures are deliberately isolated from the trading loop.
-        print(f"[FCM relay] Notification send failed: {exc}")
+        print(f"[FCM relay] Notification send failed for {event}: {exc}")
+    except Exception as exc:
+        # Unexpected notification failures must also never stop trading.
+        print(f"[FCM relay] Unexpected send failure for {event}: {type(exc).__name__}")
 
 
 def send_push(event: str, _message: str = "") -> None:
-    """Send a generic event asynchronously; ignore potentially sensitive caller text."""
+    """Send a generic event through the remote relay, without local-token gating."""
     if event not in _EVENT_MESSAGES:
         print(f"[FCM relay] Ignoring unknown notification event: {event}")
-        return
-    try:
-        if not registered_tokens():
-            return
-    except Exception as exc:
-        print(f"[FCM relay] Device registry unavailable: {type(exc).__name__}")
         return
     threading.Thread(
         target=_send,
