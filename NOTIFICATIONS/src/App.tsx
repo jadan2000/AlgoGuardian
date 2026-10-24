@@ -38,7 +38,7 @@ type HistoryTrade = {
 const URL_KEY = "algoguardian_notification_relay_url";
 const INSTALLATION_KEY = "algoguardian_notification_installation_id";
 const PHONE_SECRET_KEY = "algoguardian_phone_access_secret";
-const C = { bg: "#080D15", panel: "#111A27", panel2: "#162232", line: "#253448", green: "#8FE0B7", text: "#F1F5FC", muted: "#91A1B8", red: "#FF7777", amber: "#E9BE72" };
+const C = { bg: "#080807", panel: "#11100D", panel2: "#19160F", line: "#332B19", green: "#E8BD53", text: "#F7F2E6", muted: "#A49A84", red: "#FF7777", amber: "#E8BD53" };
 
 function money(value?: number | string, currency = "USD") {
   const number = typeof value === "string" ? Number(value.replace(/[$,]/g, "")) : Number(value ?? 0);
@@ -272,7 +272,7 @@ export default function App() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
       <View style={styles.topbar}>
-        <View style={styles.brandMark}><Text style={styles.brandMarkText}>AG</Text></View>
+        <View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandMarkHorn} /></View>
         <View style={{ flex: 1 }}><Text style={styles.brand}>AlgoGuardian</Text><Text style={styles.brandCaption}>PRIVATE TRADING CONSOLE</Text></View>
         <View style={[styles.connectionDot, { backgroundColor: isOnline ? C.green : C.amber }]} />
         <Text style={styles.topStatus}>{isOnline ? "PC ONLINE" : "PC LINK"}</Text>
@@ -369,22 +369,22 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create({\n  brandMarkHorn: { position: "absolute", width: 9, height: 9, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#F3CF68", top: 7, right: 7, transform: [{ rotate: "8deg" }] },
   safe: { flex: 1, backgroundColor: C.bg },
-  topbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, borderBottomColor: "#1B2737", borderBottomWidth: 1, gap: 10, backgroundColor: C.bg },
-  brandMark: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.green, alignItems: "center", justifyContent: "center" },
-  brandMarkText: { color: "#092319", fontWeight: "900", fontSize: 15, letterSpacing: -1 },
-  brand: { color: C.text, fontWeight: "800", fontSize: 16, letterSpacing: 0.2 },
-  brandCaption: { color: C.muted, fontSize: 8, letterSpacing: 1.6, marginTop: 3, fontWeight: "700" },
+  topbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 15, borderBottomColor: "#3B3019", borderBottomWidth: 1, gap: 11, backgroundColor: "#0B0A08" },
+  brandMark: { width: 43, height: 43, borderRadius: 13, backgroundColor: "#0B0A07", borderWidth: 1, borderColor: "#C99A35", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  brandMarkText: { color: "#F3CF68", fontWeight: "900", fontSize: 30, fontStyle: "italic", letterSpacing: -3, marginTop: -3 },
+  brand: { color: C.text, fontWeight: "900", fontSize: 17, letterSpacing: -0.3 },
+  brandCaption: { color: "#C7A34A", fontSize: 8, letterSpacing: 1.6, marginTop: 3, fontWeight: "800" },
   connectionDot: { width: 7, height: 7, borderRadius: 5 },
   topStatus: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.7 },
-  page: { padding: 18, paddingBottom: 30, gap: 15 },
+  page: { padding: 18, paddingBottom: 34, gap: 16 },
   greetingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 2 },
-  eyebrow: { color: C.green, fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginBottom: 7 },
+  eyebrow: { color: "#D8AF46", fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginBottom: 7 },
   pageTitle: { color: C.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
-  refreshButton: { borderColor: C.line, borderWidth: 1, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 9 },
+  refreshButton: { borderColor: "#59451D", borderWidth: 1, borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9, backgroundColor: "#17130A" },
   refreshText: { color: C.green, fontSize: 10, fontWeight: "800" },
-  engineBanner: { backgroundColor: C.panel, borderWidth: 1, borderRadius: 15, padding: 16, flexDirection: "row", alignItems: "center" },
+  engineBanner: { backgroundColor: "#11100D", borderWidth: 1, borderColor: "#3C3018", borderRadius: 17, padding: 17, flexDirection: "row", alignItems: "center" },
   engineCaption: { color: C.muted, fontSize: 9, letterSpacing: 1.6, fontWeight: "800" },
   engineStatus: { fontSize: 16, fontWeight: "900", marginTop: 5, letterSpacing: 0.4 },
   engineDetail: { color: C.muted, fontSize: 11, marginTop: 5 },
@@ -392,27 +392,27 @@ const styles = StyleSheet.create({
   errorBox: { backgroundColor: "#301D24", borderColor: "#66343F", borderWidth: 1, borderRadius: 11, padding: 12, gap: 7 },
   errorText: { color: "#FF9BA3", fontSize: 12, lineHeight: 18 },
   errorLink: { color: C.green, fontSize: 10, fontWeight: "800", letterSpacing: 0.7 },
-  balanceCard: { borderRadius: 18, padding: 20, backgroundColor: "#122B27", borderColor: "#255345", borderWidth: 1 },
-  balanceLabel: { color: "#9ABCAF", fontSize: 10, letterSpacing: 1.6, fontWeight: "800" },
-  balanceValue: { color: "#F3FFF8", fontSize: 36, fontWeight: "800", letterSpacing: -1.4, marginTop: 8 },
-  balanceDivider: { height: 1, backgroundColor: "#2B4B43", marginVertical: 16 },
+  balanceCard: { borderRadius: 20, padding: 21, backgroundColor: "#191408", borderColor: "#72551C", borderWidth: 1 },
+  balanceLabel: { color: "#D8B85F", fontSize: 10, letterSpacing: 1.6, fontWeight: "800" },
+  balanceValue: { color: "#FFF4CF", fontSize: 36, fontWeight: "800", letterSpacing: -1.4, marginTop: 8 },
+  balanceDivider: { height: 1, backgroundColor: "#57421B", marginVertical: 16 },
   balanceBottom: { flexDirection: "row", justifyContent: "space-between" },
   balanceSmallLabel: { color: "#9ABCAF", fontSize: 9, letterSpacing: 1.1, fontWeight: "700" },
   balanceSmallValue: { color: C.text, fontSize: 16, fontWeight: "800", marginTop: 6 },
   metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  metric: { width: "48%", flexGrow: 1, flexBasis: "43%", backgroundColor: C.panel, borderRadius: 13, padding: 14, borderWidth: 1, borderColor: "#1D2A3B", minHeight: 93 },
+  metric: { width: "48%", flexGrow: 1, flexBasis: "43%", backgroundColor: C.panel, borderRadius: 15, padding: 15, borderWidth: 1, borderColor: "#302817", minHeight: 96 },
   metricLabel: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.9 },
   metricValue: { color: C.text, fontSize: 19, fontWeight: "800", marginTop: 9 },
   metricSub: { color: C.muted, fontSize: 10, marginTop: 5 },
-  card: { backgroundColor: C.panel, borderColor: "#1F2D40", borderWidth: 1, borderRadius: 15, padding: 15, gap: 12 },
+  card: { backgroundColor: C.panel, borderColor: "#302817", borderWidth: 1, borderRadius: 17, padding: 16, gap: 12 },
   cardHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardTitle: { color: C.text, fontSize: 12, fontWeight: "800", letterSpacing: 0.7 },
   cardTrailing: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.6 },
   mutedText: { color: C.muted, fontSize: 12, lineHeight: 18 },
   controlRow: { flexDirection: "row", gap: 8, marginTop: 3 },
-  controlButton: { flex: 1, borderRadius: 10, borderWidth: 1, borderColor: "#344358", paddingVertical: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#182536" },
-  startButton: { backgroundColor: C.green, borderColor: C.green },
-  startText: { color: "#092319", fontWeight: "900", fontSize: 10 },
+  controlButton: { flex: 1, borderRadius: 11, borderWidth: 1, borderColor: "#4A3A1C", paddingVertical: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#1B170D" },
+  startButton: { backgroundColor: "#E8BD53", borderColor: "#F4D77E" },
+  startText: { color: "#171105", fontWeight: "900", fontSize: 10 },
   controlText: { color: C.text, fontWeight: "800", fontSize: 10, letterSpacing: 0.2 },
   stopButton: { backgroundColor: "#3A2027", borderColor: "#663640" },
   stopText: { color: C.red, fontWeight: "900", fontSize: 10 },
@@ -432,9 +432,9 @@ const styles = StyleSheet.create({
   activityIcon: { width: 33, height: 33, borderRadius: 10, backgroundColor: "#1B332F", alignItems: "center", justifyContent: "center" },
   updatedText: { color: "#65758B", fontSize: 9, textAlign: "center", paddingVertical: 4 },
   pairStatus: { flexDirection: "row", alignItems: "center", gap: 8 },
-  secondaryButton: { borderColor: "#344358", borderWidth: 1, borderRadius: 10, padding: 13, alignItems: "center", justifyContent: "center" },
-  primaryButton: { backgroundColor: C.green, borderRadius: 10, padding: 14, alignItems: "center", justifyContent: "center", minHeight: 46 },
-  primaryButtonText: { color: "#092319", fontWeight: "900", fontSize: 11, letterSpacing: 0.4 },
+  secondaryButton: { borderColor: "#4A3A1C", borderWidth: 1, borderRadius: 11, padding: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#17130B" },
+  primaryButton: { backgroundColor: "#E8BD53", borderRadius: 11, padding: 14, alignItems: "center", justifyContent: "center", minHeight: 46 },
+  primaryButtonText: { color: "#171105", fontWeight: "900", fontSize: 11, letterSpacing: 0.4 },
   disabledButton: { opacity: 0.5 },
   inputLabel: { color: C.muted, fontSize: 9, letterSpacing: 1.2, fontWeight: "800", marginTop: 4 },
   input: { backgroundColor: "#0A111C", color: C.text, borderColor: "#344358", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 13 },
@@ -447,11 +447,11 @@ const styles = StyleSheet.create({
   alertBody: { color: "#B5C1D2", fontSize: 12, lineHeight: 18, marginTop: 4 },
   alertTime: { color: "#6F8098", fontSize: 9, marginTop: 6 },
   status: { color: C.text, fontSize: 14, fontWeight: "700" },
-  tabbar: { flexDirection: "row", backgroundColor: "#0C131E", borderTopColor: "#1D2A3B", borderTopWidth: 1, paddingTop: 8, paddingBottom: Platform.OS === "android" ? 8 : 5 },
+  tabbar: { flexDirection: "row", backgroundColor: "#0B0A08", borderTopColor: "#3B3019", borderTopWidth: 1, paddingTop: 8, paddingBottom: Platform.OS === "android" ? 8 : 5 },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 4 },
   tabIcon: { fontSize: 19, lineHeight: 23 },
   tabLabel: { fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
-  tabIndicator: { position: "absolute", top: -8, width: 24, height: 2, borderRadius: 2, backgroundColor: C.green },
+  tabIndicator: { position: "absolute", top: -8, width: 24, height: 2, borderRadius: 2, backgroundColor: "#E8BD53" },
   busyOverlay: { position: "absolute", left: 0, right: 0, bottom: 60, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#172333", padding: 12, borderTopColor: C.line, borderTopWidth: 1 },
   busyText: { color: C.text, fontSize: 11, fontWeight: "700" }
 });
