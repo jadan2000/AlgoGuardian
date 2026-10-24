@@ -27,6 +27,17 @@ class NotificationRelayIdentityTests(unittest.TestCase):
                 with self.assertRaises(notification_relay.NotificationRelayError):
                     notification_relay._read_or_create_identity()
 
+    def test_paths_map_to_supported_supabase_actions(self):
+        self.assertEqual(notification_relay._ACTIONS["/v1/installations/register"], "register_installation")
+        self.assertEqual(notification_relay._ACTIONS["/v1/devices/register"], "register_device")
+        self.assertEqual(notification_relay._ACTIONS["/v1/devices/remove"], "remove_device")
+        self.assertEqual(notification_relay._ACTIONS["/v1/notifications/send"], "send_notification")
+
+    def test_rejects_non_supabase_relay_url(self):
+        with patch.dict("os.environ", {"NOTIFICATION_RELAY_URL": "https://example.com/relay"}):
+            with self.assertRaises(notification_relay.NotificationRelayError):
+                notification_relay._relay_url()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,4 @@
-"""Persistent per-installation identity for the notification-only Firebase relay."""
+"""Persistent per-installation identity for the notification-only Supabase relay."""
 import json
 import os
 import secrets
@@ -10,6 +10,12 @@ from urllib.request import Request, urlopen
 
 _IDENTITY_FILE = Path(__file__).resolve().parents[1] / "storage" / "notification_identity.json"
 _LOCK = threading.RLock()
+_ACTIONS = {
+    "/v1/installations/register": "register_installation",
+    "/v1/devices/register": "register_device",
+    "/v1/devices/remove": "remove_device",
+    "/v1/notifications/send": "send_notification",
+}
 
 
 class NotificationRelayError(RuntimeError):
@@ -25,10 +31,7 @@ def _read_or_create_identity() -> dict:
                     return data
             except (OSError, json.JSONDecodeError):
                 raise NotificationRelayError("Local notification identity is unreadable; refusing to replace it.")
-        data = {
-            "installation_id": str(uuid.uuid4()),
-            "installation_secret": secrets.token_urlsafe(48),
-        }
+        data = {"installation_id": str(uuid.uuid4()), "installation_secret": secrets.token_urlsafe(48)}
         _IDENTITY_FILE.parent.mkdir(parents=True, exist_ok=True)
         temporary = _IDENTITY_FILE.with_suffix(".tmp")
         try:
@@ -48,26 +51,24 @@ def _read_or_create_identity() -> dict:
 
 def _relay_url() -> str:
     value = (os.getenv("NOTIFICATION_RELAY_URL") or "").strip().rstrip("/")
-    if not value.startswith("https://"):
-        raise NotificationRelayError("Set NOTIFICATION_RELAY_URL to the HTTPS URL of the deployed Firebase notification relay.")
+    if not value.startswith("https://") or "/functions/v1/notification-relay" not in value:
+        raise NotificationRelayError("Set NOTIFICATION_RELAY_URL to the HTTPS URL of the deployed Supabase notification-relay Edge Function.")
     return value
 
 
 def relay_post(path: str, payload: dict) -> dict:
+    action = _ACTIONS.get(path)
+    if not action:
+        raise NotificationRelayError("Unsupported notification relay action.")
     identity = _read_or_create_identity()
-    body = {**payload, **identity}
-    request = Request(
-        _relay_url() + path,
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+    body = {**payload, **identity, "action": action}
+    request = Request(_relay_url(), data=json.dumps(body).encode("utf-8"),
+                      headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urlopen(request, timeout=8) as response:
             result = json.loads(response.read().decode("utf-8") or "{}")
             return result if isinstance(result, dict) else {}
     except HTTPError as exc:
-        detail = exc.read(1024).decode("utf-8", errors="replace")
         raise NotificationRelayError(f"Notification relay rejected the request (HTTP {exc.code}).") from exc
     except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
         raise NotificationRelayError(f"Notification relay is unavailable: {type(exc).__name__}.") from exc
@@ -86,4 +87,5 @@ def remove_remote_device(token: str) -> None:
 
 
 def send_remote_notification(event: str, message: str) -> None:
+    # The relay validates the event and creates its own generic message.
     relay_post("/v1/notifications/send", {"event": event, "message": message[:240]})

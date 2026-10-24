@@ -1,0 +1,2 @@
+[functions.notification-relay]
+verify_jwt = false

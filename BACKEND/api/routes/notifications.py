@@ -34,7 +34,7 @@ class DeviceRemoval(BaseModel):
 def create_pairing_session(request: Request, _user: dict = Depends(require_authenticated_user)):
     """Create a short-lived code for a QR displayed by the signed-in Windows dashboard."""
     if not (os.getenv("NOTIFICATION_RELAY_URL") or "").strip().startswith("https://"):
-        raise HTTPException(status_code=503, detail="Firebase notification relay is not configured. Set NOTIFICATION_RELAY_URL in the private backend .env and restart.")
+        raise HTTPException(status_code=503, detail="Supabase notification relay is not configured. Set NOTIFICATION_RELAY_URL in the private backend .env and restart.")
     base_url = str(request.base_url).rstrip("/")
     hostname = request.url.hostname or ""
     if hostname.lower() in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}:
