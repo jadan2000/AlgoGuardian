@@ -289,10 +289,10 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === "home" && <>
-          <View style={styles.greetingRow}><View><Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>YOUR ACCOUNT AT A GLANCE</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Dashboard</Text></View><Pressable style={styles.refreshButton} onPress={() => void refreshDashboard()}><Text style={styles.refreshText}>{loading ? "SYNCING…" : "↻ REFRESH"}</Text></Pressable></View>
-          <View style={[styles.engineBanner, { borderColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#285B47" : C.line }]}>
-            <View style={{ flex: 1 }}><Text style={[styles.engineCaption, isLight && { color: LIGHT.muted }]}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? C.green : bot?.kill_switch ? C.red : C.text }]}>{engineText}</Text><Text style={[styles.engineDetail, isLight && { color: LIGHT.muted }]}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows connection"}</Text></View>
-            <View style={[styles.engineIcon, { backgroundColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#163D32" : "#263245" }]}><Text style={{ fontSize: 22, color: bot?.running && !bot?.paused ? C.green : C.muted }}>⌁</Text></View>
+          <View style={styles.greetingRow}><View><Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>YOUR ACCOUNT AT A GLANCE</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Dashboard</Text></View><Pressable style={styles.refreshButton} onPress={() => void refreshDashboard()}><Text style={[styles.refreshText, isLight && { color: LIGHT.gold }]}>{loading ? "SYNCING…" : "↻ REFRESH"}</Text></Pressable></View>
+          <View style={[styles.engineBanner, isLight && { backgroundColor: LIGHT.panel }, { borderColor: bot?.running && !bot?.paused && !bot?.kill_switch ? (isLight ? "#8CB9A0" : "#285B47") : (isLight ? LIGHT.line : C.line) }]}>
+            <View style={{ flex: 1 }}><Text style={[styles.engineCaption, isLight && { color: LIGHT.muted }]}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? (isLight ? "#28734F" : C.green) : bot?.kill_switch ? C.red : (isLight ? LIGHT.text : C.text) }]}>{engineText}</Text><Text style={[styles.engineDetail, isLight && { color: LIGHT.muted }]}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows connection"}</Text></View>
+            <View style={[styles.engineIcon, { backgroundColor: isLight ? (bot?.running && !bot?.paused ? "#E0F1E6" : LIGHT.panel2) : (bot?.running && !bot?.paused && !bot?.kill_switch ? "#163D32" : "#263245") }]}><Text style={{ fontSize: 22, color: bot?.running && !bot?.paused ? (isLight ? "#28734F" : C.green) : (isLight ? LIGHT.muted : C.muted) }}>⌁</Text></View>
           </View>
           {apiError ? <View style={styles.errorBox}><Text style={styles.errorText}>{apiError}</Text><Pressable onPress={() => setTab("settings")}><Text style={styles.errorLink}>OPEN SETTINGS ↗</Text></Pressable></View> : null}
           <View style={[styles.balanceCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
@@ -311,7 +311,7 @@ export default function App() {
             <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Commands are sent to your configured PC. Starting the engine may result in real trades.</Text>
             <View style={styles.controlRow}>
               <Pressable style={[styles.controlButton, styles.startButton]} onPress={() => runBotAction("start")} disabled={actionBusy}><Text style={styles.startText}>{actionBusy ? "PLEASE WAIT…" : "▶  START"}</Text></Pressable>
-              <Pressable style={styles.controlButton} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>Ⅱ  PAUSE</Text></Pressable>
+              <Pressable style={[styles.controlButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>Ⅱ  PAUSE</Text></Pressable>
             </View>
           </View>
           <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("OPEN POSITIONS", String(positions.length))}
