@@ -11,6 +11,14 @@
       "package": "com.algoguardian.alerts",
       "googleServicesFile": "./google-services.json"
     },
-    "plugins": ["expo-notifications"]
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AlgoGuardian uses the camera to scan the one-time pairing QR code from your Windows PC."
+        }
+      ],
+      "expo-notifications"
+    ]
   }
 }
