@@ -35,3 +35,8 @@ __pycache__/
 # Encrypted broker credentials managed by the Accounts page
 BACKEND/storage/mt5_credentials.enc
 BACKEND/storage/mt5_credentials.tmp
+
+# Firebase private configuration and service-account credentials
+NOTIFICATIONS/google-services.json
+*firebase-admin*.json
+*firebase-service-account*.json
