@@ -369,7 +369,8 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({\n  brandMarkHorn: { position: "absolute", width: 9, height: 9, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#F3CF68", top: 7, right: 7, transform: [{ rotate: "8deg" }] },
+const styles = StyleSheet.create({
+  brandMarkHorn: { position: "absolute", width: 9, height: 9, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#F3CF68", top: 7, right: 7, transform: [{ rotate: "8deg" }] },
   safe: { flex: 1, backgroundColor: C.bg },
   topbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 15, borderBottomColor: "#3B3019", borderBottomWidth: 1, gap: 11, backgroundColor: "#0B0A08" },
   brandMark: { width: 43, height: 43, borderRadius: 13, backgroundColor: "#0B0A07", borderWidth: 1, borderColor: "#C99A35", alignItems: "center", justifyContent: "center", overflow: "hidden" },
