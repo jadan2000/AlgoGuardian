@@ -116,8 +116,12 @@ export default function App() {
     });
     let notificationWriteQueue: Promise<void> = Promise.resolve();
     const saveNotification = (item: AlertItem) => {
-      // Serialize writes so a startup history read and a newly received alert
-      // cannot overwrite one another. Keep the history in app-private phone storage.
+      // Show a received alert immediately; persistence must never block the UI.
+      setLatest(current => {
+        const merged = [item, ...current.filter(existing => existing.id !== item.id)].slice(0, 50);
+        return merged;
+      });
+      // Serialize writes so concurrent alerts cannot overwrite each other.
       notificationWriteQueue = notificationWriteQueue.then(async () => {
         const saved = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
         let stored: AlertItem[] = [];
@@ -134,10 +138,6 @@ export default function App() {
         }
         const merged = [item, ...stored.filter(existing => existing.id !== item.id)].slice(0, 50);
         await AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(merged));
-        setLatest(current => {
-          const combined = [...current, ...merged];
-          return combined.filter((entry, index) => combined.findIndex(other => other.id === entry.id) === index).slice(0, 50);
-        });
       }).catch(error => {
         console.warn("Could not save AlgoGuardian notification to phone storage", error);
       });
