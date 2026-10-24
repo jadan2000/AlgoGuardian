@@ -73,7 +73,7 @@ export default function App() {
   const [latest, setLatest] = useState<AlertItem[]>([]);
   const [notificationDebug, setNotificationDebug] = useState("Listener starting…");
   const [tab, setTab] = useState<"home" | "trades" | "alerts" | "notifications" | "settings">("home");
-  const [isLight, setIsLight] = useState(false);
+  const [isLight, setIsLight] = useState(true);
   const [account, setAccount] = useState<Account | null>(null);
   const [bot, setBot] = useState<BotStatus | null>(null);
   const [trades, setTrades] = useState<HistoryTrade[]>([]);
@@ -356,7 +356,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={[styles.safe, isLight && { backgroundColor: LIGHT.bg }]}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+      <StatusBar hidden barStyle="dark-content" backgroundColor={LIGHT.bg} />
       <View style={[styles.topbar, isLight && { backgroundColor: LIGHT.top, borderBottomColor: LIGHT.line }]}>
         <View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandMarkHorn} /></View>
         <View style={{ flex: 1 }}><Text style={[styles.brand, isLight && { color: LIGHT.text }]}>AlgoGuardian</Text><Text style={[styles.brandCaption, isLight && { color: LIGHT.gold }]}>PRIVATE TRADING CONSOLE</Text></View>
