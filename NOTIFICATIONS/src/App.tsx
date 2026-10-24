@@ -289,7 +289,7 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === "home" && <>
-          <View style={styles.greetingRow}><View><Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>YOUR ACCOUNT AT A GLANCE</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Dashboard</Text></View><Pressable style={styles.refreshButton} onPress={() => void refreshDashboard()}><Text style={[styles.refreshText, isLight && { color: LIGHT.gold }]}>{loading ? "SYNCING…" : "↻ REFRESH"}</Text></Pressable></View>
+          <View style={styles.greetingRow}><View><Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>YOUR ACCOUNT AT A GLANCE</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Dashboard</Text></View><Pressable accessibilityLabel="Refresh dashboard" style={[styles.refreshButton, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]} onPress={() => void refreshDashboard()} disabled={loading}><Text style={[styles.refreshText, isLight && { color: LIGHT.gold }]}>{loading ? "↻  SYNCING…" : "↻  REFRESH"}</Text></Pressable></View>
           <View style={[styles.engineBanner, isLight && { backgroundColor: LIGHT.panel }, { borderColor: bot?.running && !bot?.paused && !bot?.kill_switch ? (isLight ? "#8CB9A0" : "#285B47") : (isLight ? LIGHT.line : C.line) }]}>
             <View style={{ flex: 1 }}><Text style={[styles.engineCaption, isLight && { color: LIGHT.muted }]}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? (isLight ? "#28734F" : C.green) : bot?.kill_switch ? C.red : (isLight ? LIGHT.text : C.text) }]}>{engineText}</Text><Text style={[styles.engineDetail, isLight && { color: LIGHT.muted }]}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows connection"}</Text></View>
             <View style={[styles.engineIcon, { backgroundColor: isLight ? (bot?.running && !bot?.paused ? "#E0F1E6" : LIGHT.panel2) : (bot?.running && !bot?.paused && !bot?.kill_switch ? "#163D32" : "#263245") }]}><Text style={{ fontSize: 22, color: bot?.running && !bot?.paused ? (isLight ? "#28734F" : C.green) : (isLight ? LIGHT.muted : C.muted) }}>⌁</Text></View>
@@ -391,8 +391,8 @@ const styles = StyleSheet.create({
   greetingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 2 },
   eyebrow: { color: "#D8AF46", fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginBottom: 7 },
   pageTitle: { color: C.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
-  refreshButton: { borderColor: "#59451D", borderWidth: 1, borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9, backgroundColor: "#17130A" },
-  refreshText: { color: C.green, fontSize: 10, fontWeight: "800" },
+  refreshButton: { borderColor: "#59451D", borderWidth: 1, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 10, minHeight: 38, alignItems: "center", justifyContent: "center", backgroundColor: "#17130A" },
+  refreshText: { color: C.green, fontSize: 10, fontWeight: "900", letterSpacing: 0.35 },
   engineBanner: { backgroundColor: "#11100D", borderWidth: 1, borderColor: "#3C3018", borderRadius: 17, padding: 17, flexDirection: "row", alignItems: "center" },
   engineCaption: { color: C.muted, fontSize: 9, letterSpacing: 1.6, fontWeight: "800" },
   engineStatus: { fontSize: 16, fontWeight: "900", marginTop: 5, letterSpacing: 0.4 },
