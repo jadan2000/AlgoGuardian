@@ -222,8 +222,7 @@ export default function App() {
   const unpairDevice = async () => {
     if (!relayUrl || !installationId || !fcmToken) {
       await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY); await SecureStore.deleteItemAsync(PHONE_SECRET_KEY);
-      await SecureStore.deleteItemAsync(PHONE_SECRET_KEY);
-      setRelayUrl(""); setInstallationId(""); setRegistration("Pairing details cleared."); return;
+      setRelayUrl(""); setInstallationId(""); setPhoneSecret(""); setRegistration("Pairing details cleared."); return;
     }
     Alert.alert("Unpair this phone?", "This removes the saved pairing details from this app.", [
       { text: "Cancel", style: "cancel" },
@@ -289,7 +288,7 @@ export default function App() {
             <View style={{ flex: 1 }}><Text style={styles.engineCaption}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? C.green : bot?.kill_switch ? C.red : C.text }]}>{engineText}</Text><Text style={styles.engineDetail}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows PC connection"}</Text></View>
             <View style={[styles.engineIcon, { backgroundColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#163D32" : "#263245" }]}><Text style={{ fontSize: 22, color: bot?.running && !bot?.paused ? C.green : C.muted }}>⌁</Text></View>
           </View>
-          {apiError ? <View style={styles.errorBox}><Text style={styles.errorText}>{apiError}</Text><Pressable onPress={() => setTab("settings")}><Text style={styles.errorLink}>CONFIGURE PC ↗</Text></Pressable></View> : null}
+          {apiError ? <View style={styles.errorBox}><Text style={styles.errorText}>{apiError}</Text><Pressable onPress={() => setTab("settings")}><Text style={styles.errorLink}>OPEN SETTINGS ↗</Text></Pressable></View> : null}
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>ACCOUNT EQUITY</Text>
             <Text style={styles.balanceValue}>{account ? money(account.equity) : "—"}</Text>
@@ -310,7 +309,7 @@ export default function App() {
             </View>
           </View>
           <View style={styles.card}>{cardTitle("OPEN POSITIONS", String(positions.length))}
-            {positions.length ? positions.slice(0, 5).map((trade, index) => renderPosition(trade, index)) : <Text style={styles.emptyText}>{account ? "No open positions right now." : "Connect the Windows PC in Settings to see live positions."}</Text>}
+            {positions.length ? positions.slice(0, 5).map((trade, index) => renderPosition(trade, index)) : <Text style={styles.emptyText}>{account ? "No open positions right now." : "Pair with the Windows installation to see live positions."}</Text>}
             {positions.length > 5 ? <Pressable onPress={() => setTab("trades")} style={styles.viewAll}><Text style={styles.viewAllText}>VIEW ALL POSITIONS  →</Text></Pressable> : null}
           </View>
           <View style={styles.card}>{cardTitle("RECENT ACTIVITY", "LAST 30 DAYS")}
@@ -323,7 +322,7 @@ export default function App() {
           <Text style={styles.eyebrow}>LIVE MT5 DATA</Text><Text style={styles.pageTitle}>Trades</Text>
           <View style={styles.metricGrid}>{metric("OPEN", String(positions.length), "Active positions")}{metric("FLOATING P/L", account ? money(account.profit) : "—", "Unrealized", Number(account?.profit ?? 0) >= 0)}</View>
           <View style={styles.card}>{cardTitle("OPEN POSITIONS", String(positions.length))}
-            {positions.length ? positions.map((trade, index) => renderPosition(trade, index)) : <Text style={styles.emptyText}>No open positions or the PC is not connected.</Text>}
+            {positions.length ? positions.map((trade, index) => renderPosition(trade, index)) : <Text style={styles.emptyText}>No open positions or the Windows installation is offline.</Text>}
           </View>
           <View style={styles.card}>{cardTitle("CLOSED TRADES", String(trades.length))}
             {trades.length ? trades.slice(0, 50).map((trade, index) => <View style={styles.tradeRow} key={String(trade.position_id ?? trade.ticket ?? index)}><View style={[styles.sidePill, { backgroundColor: String(trade.type).toUpperCase() === "BUY" ? "#163D32" : "#42272D" }]}><Text style={{ color: String(trade.type).toUpperCase() === "BUY" ? C.green : C.red, fontWeight: "800", fontSize: 10 }}>{trade.type || "TRADE"}</Text></View><View style={styles.tradeMain}><Text style={styles.tradeSymbol}>{trade.symbol || "—"}</Text><Text style={styles.tradeMeta}>{trade.close_time ? new Date(trade.close_time).toLocaleString() : "Closed"} · {num(trade.volume)} lots</Text></View><Text style={[styles.tradeProfit, { color: Number(trade.profit ?? 0) >= 0 ? C.green : C.red }]}>{money(trade.profit)}</Text></View>) : <Text style={styles.emptyText}>No closed trades returned by the backend.</Text>}
@@ -355,7 +354,7 @@ export default function App() {
             <Pressable style={styles.secondaryButton} onPress={() => void unpairDevice()} disabled={busy}><Text style={styles.controlText}>UNPAIR THIS PHONE</Text></Pressable>
             <Text style={styles.mutedText}>Notification permission: {permission}</Text>
           </View>
-          <View style={styles.card}>{cardTitle("SECURITY & ARCHITECTURE")}<Text style={styles.mutedText}>Trading and MT5 remain on your Windows PC. This mobile app sends requests to that PC and receives push alerts; the notification relay does not execute trades. The current backend trading-control routes still need server-side authentication before this app is suitable for public customer rollout.</Text></View>
+          <View style={styles.card}>{cardTitle("SECURITY & ARCHITECTURE")}<Text style={styles.mutedText}>Trading and MT5 remain on your Windows PC. This mobile app sends requests to that PC and receives push alerts; the notification relay does not execute trades. Remote commands are accepted only through the relay and limited to engine start/pause. Public release still requires end-to-end security and isolation testing.</Text></View>
         </>}
       </ScrollView>
 
