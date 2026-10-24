@@ -2,7 +2,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from threading import Thread
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
+
+# Load backend-local environment variables before importing services that read them.
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
