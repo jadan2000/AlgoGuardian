@@ -71,6 +71,7 @@ export default function App() {
   const [scanned, setScanned] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [latest, setLatest] = useState<AlertItem[]>([]);
+  const [notificationDebug, setNotificationDebug] = useState("Listener starting…");
   const [tab, setTab] = useState<"home" | "trades" | "alerts" | "notifications" | "settings">("home");
   const [isLight, setIsLight] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
@@ -168,9 +169,15 @@ export default function App() {
         if (lastResponse) saveNotification(toItem(lastResponse.notification));
       } catch { /* Keep the notification page usable if local history cannot be read. */ }
     };
-    void syncNotificationHistory();
-    const received = Notifications.addNotificationReceivedListener(notification => saveNotification(toItem(notification)));
-    const response = Notifications.addNotificationResponseReceivedListener(event => saveNotification(toItem(event.notification)));
+    void syncNotificationHistory().then(() => setNotificationDebug("Listener registered; local history checked"));
+    const received = Notifications.addNotificationReceivedListener(notification => {
+      setNotificationDebug("Foreground notification received at " + new Date().toLocaleTimeString());
+      saveNotification(toItem(notification));
+    });
+    const response = Notifications.addNotificationResponseReceivedListener(event => {
+      setNotificationDebug("Notification tapped at " + new Date().toLocaleTimeString());
+      saveNotification(toItem(event.notification));
+    });
     const appState = AppState.addEventListener("change", state => {
       if (state === "active") void syncNotificationHistory();
     });
@@ -412,6 +419,16 @@ export default function App() {
           <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>ALERT CENTER</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Notifications</Text>
           <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
             {cardTitle("RECENT NOTIFICATIONS", String(latest.length))}
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{notificationDebug}</Text>
+            <Pressable onPress={() => {
+              const item: AlertItem = { id: "local-test-" + Date.now(), title: "Local history test", body: "This test was created on this phone, without sending a push.", receivedAt: new Date().toLocaleString() };
+              setLatest(current => [item, ...current.filter(existing => existing.id !== item.id)].slice(0, 50));
+              void AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify([item, ...latest.filter(existing => existing.id !== item.id)].slice(0, 50)))
+                .then(() => setNotificationDebug("Local test saved to phone storage"))
+                .catch(error => setNotificationDebug("Phone storage error: " + String(error)));
+            }} style={{ alignSelf: "flex-start", borderWidth: 1, borderColor: isLight ? LIGHT.line : C.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginTop: 8 }}>
+              <Text style={{ color: isLight ? LIGHT.gold : C.green, fontWeight: "700" }}>TEST LOCAL HISTORY</Text>
+            </Pressable>
             {latest.length === 0 ? <View style={styles.emptyNotifications}><Text style={[styles.emptyNotificationTitle, isLight && { color: LIGHT.text }]}>You're all caught up</Text><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Trading alerts and push notifications will appear here when received by this phone.</Text></View> : latest.map((item, index) => <View key={item.receivedAt + "-" + index} style={[styles.notificationRow, isLight && { borderTopColor: LIGHT.line }]}>
               <View style={[styles.notificationMark, { backgroundColor: isLight ? LIGHT.panel2 : C.panel2 }]}><Text style={{ color: isLight ? LIGHT.gold : C.green, fontSize: 16 }}>●</Text></View>
               <View style={{ flex: 1 }}><Text style={[styles.notificationTitle, isLight && { color: LIGHT.text }]}>{item.title}</Text>{item.body ? <Text style={[styles.notificationBody, isLight && { color: LIGHT.muted }]}>{item.body}</Text> : null}<Text style={[styles.notificationTime, isLight && { color: LIGHT.muted }]}>{item.receivedAt}</Text></View>
