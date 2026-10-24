@@ -5,6 +5,7 @@ import {
   FileText,
   WalletCards,
   BookOpen,
+  CheckCircle2,
 } from "lucide-react";
 
 type Props = {
@@ -19,6 +20,7 @@ export default function Sidebar({ activeTab, setActiveTab }: Props) {
     { id: "settings", label: "Settings", icon: Settings },
     { id: "logs", label: "Logs", icon: FileText },
     { id: "accounts", label: "Accounts", icon: WalletCards },
+    { id: "requirements", label: "Requirements", icon: CheckCircle2 },
     { id: "how-to-use", label: "How to Use", icon: BookOpen },
   ];
 
