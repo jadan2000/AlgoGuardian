@@ -133,9 +133,9 @@ const Index = () => {
   return (
     <div className="page-enter min-h-screen w-full bg-background text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-xl">
-        <div className="mx-auto max-w-[1600px] px-4 sm:px-7 py-3.5 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3"><img src="/favicon.svg" alt="AlgoGuardian gold bull emblem" className="h-11 w-11 shrink-0 rounded-xl object-cover" /><div className="flex min-w-0 flex-col"><span className="text-xl sm:text-2xl font-extrabold tracking-[-0.045em]">ALGO<span className="text-primary">GUARDIAN</span></span><span className="mt-0.5 text-[10px] sm:text-xs font-medium uppercase tracking-[.16em] text-muted-foreground">{greeting}, {firstName}</span></div></div>
+      <header className="sticky top-0 z-50 border-b border-border bg-card/50 backdrop-blur-sm">
+        <div className="mx-auto max-w-[1440px] px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-3"><img src="/favicon.svg" alt="AlgoGuardian logo" className="h-10 w-10 shrink-0 rounded-full object-cover" /><div className="flex min-w-0 flex-col"><span className="text-2xl sm:text-3xl font-bold tracking-wide">AlgoGuardian</span><span className="text-xs sm:text-sm text-muted-foreground">{greeting}, {firstName}</span></div></div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <button
@@ -164,7 +164,7 @@ const Index = () => {
           setActiveTab={setActiveTab}
         />
 
-        <main className="flex-1 min-w-0 p-4 md:p-7 xl:p-8 space-y-5 md:space-y-7 overflow-x-hidden">
+        <main className="flex-1 min-w-0 p-3 md:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
           <BotStatus />
 
           {activeTab === "dashboard" && (
