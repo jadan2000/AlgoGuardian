@@ -14,10 +14,11 @@ import { LogsPanel } from "@/components/dashboard/LogsPanel";
 import AccountsPage from "@/components/dashboard/AccountsPage";
 import Sidebar from "@/components/layout/Sidebar";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getHealth } from "@/services/api";
 import { API_BASE } from "@/config/api";
 import { useAuth } from "@/auth/AuthProvider";
+import { supabase } from "@/auth/supabase";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -41,25 +42,56 @@ const Index = () => {
     return () => window.clearInterval(interval);
   }, []);
 
-   useEffect(() => {
-     console.log("useEffect running");
-     
-    getHealth()
-      .then((data) => {
-        console.log("Backend Response:", data);
-      })
-      .catch((err) => {
-        console.error("Backend Error:", err);
-      });
+  useEffect(() => {
+    getHealth().catch((err) => console.error("Backend health check failed:", err));
   }, []);
 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [mt5Connected, setMt5Connected] = useState(false);
+  const autoConnectUserRef = useRef<string | null>(null);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  // When an authenticated user lands on the dashboard, ask the backend to
+  // initialize/connect its configured MT5 terminal automatically.
+  useEffect(() => {
+    if (!user?.id || autoConnectUserRef.current === user.id) return;
+    autoConnectUserRef.current = user.id;
+    let cancelled = false;
+
+    const autoConnectMT5 = async () => {
+      try {
+        const sessionResult = await supabase?.auth.getSession();
+        const token = sessionResult?.data.session?.access_token;
+        if (!token) return;
+
+        const response = await fetch(`${API_BASE}/api/mt5-account/connect`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (response.status !== 403 && !cancelled) {
+            console.warn("Automatic MT5 connection was not completed:", data.detail || response.statusText);
+          }
+          return;
+        }
+        if (!cancelled) {
+          setMt5Connected(Boolean(data.connected));
+          if (data.connected) toast.success("MetaTrader 5 connected automatically.");
+          else if (data.reason) toast.warning(`MT5 startup needs attention: ${data.reason}`);
+        }
+      } catch (error) {
+        if (!cancelled) console.error("Automatic MT5 connection failed:", error);
+      }
+    };
+
+    void autoConnectMT5();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   useEffect(() => {
     let mounted = true;
