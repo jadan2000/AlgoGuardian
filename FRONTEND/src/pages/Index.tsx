@@ -13,7 +13,6 @@ import { SettingsPanel } from "@/components/dashboard/SettingsPanel";
 import { LogsPanel } from "@/components/dashboard/LogsPanel";
 import AccountsPage from "@/components/dashboard/AccountsPage";
 import Sidebar from "@/components/layout/Sidebar";
-import LocalBridgeStatus from "@/components/dashboard/LocalBridgeStatus";
 
 import { useEffect } from "react";
 import { getHealth } from "@/services/api";
@@ -134,7 +133,6 @@ const Index = () => {
 
         <main className="flex-1 min-w-0 p-3 md:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
           <BotStatus />
-          {activeTab === "dashboard" && <LocalBridgeStatus />}
 
           {activeTab === "dashboard" && (
             <>
