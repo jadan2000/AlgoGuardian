@@ -38,6 +38,15 @@ def _snapshot():
 
 
 def _execute_command(command):
+    expires_at = command.get("expires_at")
+    if not isinstance(expires_at, str):
+        raise RuntimeError("Command expiry is missing; request was refused.")
+    try:
+        expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise RuntimeError("Command expiry is invalid; request was refused.") from exc
+    if expiry <= datetime.now(timezone.utc):
+        raise RuntimeError("Command expired before execution.")
     from api.routes.bot import start_bot, pause_bot
     action = command.get("action")
     if action == "pause":
