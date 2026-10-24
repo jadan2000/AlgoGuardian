@@ -4,40 +4,70 @@ Android notification-only companion for a customer-owned AlgoGuardian Windows in
 
 ## Architecture
 
-- Each customer runs the trading engine and their own MT5 terminal/account locally on their Windows PC.
-- Phone FCM tokens are registered in a local registry at `BACKEND/storage/notification_devices.json`; the registry is ignored by Git and must never be copied between customers.
-- The phone pairs to the Windows installation using its backend URL and a unique pairing secret. The secret is stored in Android secure storage.
-- Firebase Cloud Messaging transports notifications only. It does not execute trades or host the trading engine.
+- Each customer runs AlgoGuardian, the trading engine, and their own MT5 terminal/account locally on their Windows PC.
+- The Windows backend generates a QR code containing a random, single-use pairing code that expires after three minutes.
+- The phone scans that QR code and sends its FCM token to that Windows backend. The backend consumes the code once, then registers the phone with the notification-only Firebase relay.
+- Every Windows installation has a separate random installation ID and secret stored in `BACKEND/storage/notification_identity.json`. That file is excluded from Git and must never be copied between PCs.
+- Firebase Cloud Messaging transports notifications only. The cloud relay stores each installation's device tokens separately and does not execute trades or receive broker credentials, prices, strategies, or trading commands.
+- The Firebase Admin SDK service-account key stays in Firebase's server-side runtime. It is not installed on customer PCs.
 
-## Configure the Windows installation
+## Deploy the Firebase notification relay (one-time developer setup)
 
-1. Copy `BACKEND/.env.example` to `BACKEND/.env` and configure the existing MT5 and Supabase settings.
-2. Generate a unique pairing secret for this installation:
+Prerequisites: a Firebase project, Node.js 20+, and Firebase CLI. Cloud Functions deployment may require the Firebase project's billing plan to support it.
+
+1. In the Firebase Console, create or select the project used by the Android app. Enable Cloud Firestore.
+2. In `FIREBASE/`, select the project with the Firebase CLI:
 
    ```powershell
-   python -c "import secrets; print(secrets.token_urlsafe(48))"
+   npm install -g firebase-tools
+   firebase login
+   firebase use --add
    ```
 
-3. Set `NOTIFICATION_PAIRING_SECRET` to that value in `BACKEND/.env`. Never reuse the same secret for different customers or share it in support chats.
-4. Configure `GOOGLE_APPLICATION_CREDENTIALS` to point to the Firebase Admin SDK JSON file. Keep it outside the repository and restrict filesystem access.
-5. Install backend dependencies from `BACKEND/` with `pip install -r requirements.txt`, then restart the local backend.
-6. Ensure the phone can reach the Windows backend URL while pairing. The backend must be running and reachable on the local network.
+3. Deploy the relay and Firestore rules:
 
-## Build and pair the Android app
+   ```powershell
+   cd FIREBASE
+   npm --prefix functions install
+   firebase deploy --only functions,firestore:rules
+   ```
 
-1. In Firebase Console, register an Android app with package name `com.algoguardian.alerts` and place its `google-services.json` in `NOTIFICATIONS/`. Never commit that file.
-2. From `NOTIFICATIONS/`, run `npm install`, then build and install a native Android build using your configured Expo/EAS workflow. Remote push does not work in Expo Go.
-3. Open AlgoGuardian Notifications on a physical Android phone and grant notification permission.
-4. Enter the Windows backend URL, such as `http://192.168.1.20:8000`, and the unique pairing secret configured in that PC's private `.env`.
-5. Tap **Pair this phone**. A successful response registers this FCM token only in that Windows installation's local registry.
-6. Pair each additional phone with that customer's own Windows installation. To stop notifications, tap **Unpair this phone** while the PC is reachable.
+4. Copy the deployed `notificationRelay` HTTPS function URL. Set it as `NOTIFICATION_RELAY_URL` in each Windows installation's private `BACKEND/.env`, for example:
+
+   ```dotenv
+   NOTIFICATION_RELAY_URL=https://us-central1-YOUR_FIREBASE_PROJECT.cloudfunctions.net/notificationRelay
+   ```
+
+5. Keep the Firebase Admin service account within the Firebase/Google Cloud managed runtime. Do not download it to customer PCs, commit it, or distribute it.
+
+The relay uses Firestore's server-side Admin SDK. Its rules explicitly deny client SDK access to installation records.
+
+## Configure and run a Windows installation
+
+1. Copy `BACKEND/.env.example` to `BACKEND/.env` and configure the existing local MT5, Supabase, encryption, and `NOTIFICATION_RELAY_URL` settings.
+2. Install backend dependencies from `BACKEND/` with `pip install -r requirements.txt`, then restart the local backend.
+3. Sign in to the AlgoGuardian Windows dashboard and open **Broker Accounts**.
+4. Select **Generate pairing QR**. Open the AlgoGuardian phone app on a physical Android phone, grant notification and camera permissions, then scan the QR.
+5. Pair while the phone and PC are on the same trusted local network. The QR code expires after three minutes and can be used once; generate a new one if it expires.
+6. For a native Android build, register the Android app in the same Firebase project, place its `google-services.json` in `NOTIFICATIONS/` (never commit it), then build with the Expo/EAS workflow. Remote push does not work in Expo Go.
 
 ## Event delivery and operational limits
 
-The Windows backend sends best-effort notifications for the existing bot lifecycle and trade events. Notification sends are asynchronous so a push failure does not block trade execution. FCM delivery requires internet on the Windows PC when the event is sent and internet on the phone. If the PC is powered off or offline, new events are not queued durably.
+- The Windows backend sends best-effort alerts for existing engine lifecycle and trade events. Push sends run asynchronously; notification failures must not block trade execution.
+- The Windows PC needs internet access when it sends an alert; the phone needs internet to receive it.
+- If the PC is powered off or offline, new events are not queued durably.
+- The current local QR claim uses the Windows backend's LAN URL. Pair only on a trusted network; plain HTTP can expose the short-lived code and FCM token to a network observer. Do not expose the local backend to the public internet. TLS-backed local pairing remains a release gate.
 
-## Security status — not yet ready for public customer rollout
+## Security status — not ready for public customer rollout
 
-This branch adds per-installation token storage and pairing, but the direct Firebase Admin SDK sender still requires a privileged service-account credential on the Windows PC. **Do not distribute one shared Firebase Admin service-account key to customers.** Before public rollout, replace direct Admin SDK sending from customer PCs with a trusted notification-only relay that keeps the service account server-side, authenticates each installation, and sends only to devices owned by that installation. This relay must never receive broker credentials, trading commands, or strategy data.
+The branch now includes a notification-only relay and QR pairing implementation, but it has not been deployed or verified end-to-end. Do not distribute it as a production installer yet. Remaining gates include:
 
-The local pairing endpoint currently uses the local backend URL supplied by the user. Pair only on a trusted network; plain HTTP exposes the pairing secret to anyone able to inspect that network. A production pairing flow should use authenticated pairing over TLS or a one-time short-lived pairing code.
+- Configure and deploy the relay in the intended Firebase project, and test installation registration and notification delivery.
+- Build the Android app with the correct Firebase project and test QR scanning, token rotation, app-closed delivery, and unpairing on a real phone.
+- Secure the local Windows API consistently. Existing bot controls, configuration, trades, logs, and account endpoints still need a full authenticated-route review.
+- Replace the LAN HTTP pairing transport with TLS or another verified secure local pairing transport before public rollout.
+- Add durable notification retry/deduplication and robust invalid-token handling.
+- Test two separate Windows installations and two phones; verify there is no cross-installation delivery.
+- Build a Windows installer and verify safe startup, shutdown, recovery, updates, and log rotation.
+
+See `PRODUCTION_READINESS.md` for acceptance gates.
