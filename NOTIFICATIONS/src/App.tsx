@@ -278,7 +278,6 @@ export default function App() {
       <View style={[styles.topbar, isLight && { backgroundColor: LIGHT.top, borderBottomColor: LIGHT.line }]}>
         <View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandMarkHorn} /></View>
         <View style={{ flex: 1 }}><Text style={[styles.brand, isLight && { color: LIGHT.text }]}>AlgoGuardian</Text><Text style={[styles.brandCaption, isLight && { color: LIGHT.gold }]}>PRIVATE TRADING CONSOLE</Text></View>
-        <Pressable accessibilityLabel={isLight ? "Switch to dark mode" : "Switch to light mode"} onPress={() => { const next = !isLight; setIsLight(next); void SecureStore.setItemAsync("algoguardian_theme", next ? "light" : "dark"); }} style={[styles.themeToggle, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]}><Text style={[styles.themeToggleText, isLight && { color: LIGHT.gold }]}>{isLight ? "☀" : "☾"}</Text></Pressable>
         <View style={[styles.connectionDot, { backgroundColor: isOnline ? C.green : C.amber }]} />
         <Text style={styles.topStatus}>{isOnline ? "PC ONLINE" : "PC LINK"}</Text>
       </View>
@@ -315,7 +314,7 @@ export default function App() {
             </View>
           </View>
           <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("OPEN POSITIONS", String(positions.length))}
-            {positions.length ? positions.slice(0, 5).map((trade, index) => renderPosition(trade, index)) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>{account ? "No open positions right now." : "Pair with the Windows installation to see live positions."}</Text>}
+            {positions.length ? <ScrollView style={styles.openPositionsList} nestedScrollEnabled showsVerticalScrollIndicator>{positions.map((trade, index) => renderPosition(trade, index))}</ScrollView> : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>{account ? "No open positions right now." : "Pair with the Windows installation to see live positions."}</Text>}
             {positions.length > 5 ? <Pressable onPress={() => setTab("trades")} style={styles.viewAll}><Text style={styles.viewAllText}>VIEW ALL POSITIONS  →</Text></Pressable> : null}
           </View>
           <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("RECENT ACTIVITY", "LAST 30 DAYS")}
@@ -338,37 +337,44 @@ export default function App() {
         </>}
 
         {tab === "alerts" && <>
-          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>ENGINE EVENTS</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Alerts</Text>
-          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("PUSH STATUS")}<Text style={[styles.status, isLight && { color: LIGHT.text }]}>{permission}</Text><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Push notifications arrive through Firebase when your Windows installation sends supported engine or trade events.</Text><View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId ? C.green : C.amber }]} /><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{installationId ? "Phone paired" : "Phone not paired"}</Text></View><Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => setTab("settings")}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>PAIRING & SETTINGS</Text></Pressable></View>
-          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("RECENT ALERTS", String(latest.length))}
-            {latest.length ? latest.map((item, index) => <View style={styles.alertRow} key={item.receivedAt + index}><View style={styles.alertIcon}><Text style={{ color: C.green }}>↯</Text></View><View style={{ flex: 1 }}><Text style={styles.alertTitle}>{item.title}</Text><Text style={styles.alertBody}>{item.body}</Text><Text style={styles.alertTime}>{item.receivedAt}</Text></View></View>) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>No alerts received on this phone yet. Pair it with your Windows installation to receive events.</Text>}
+          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>YOUR TRADING SNAPSHOT</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Insights</Text>
+          <View style={styles.insightGrid}>
+            <View style={[styles.insightCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>CLOSED TRADES</Text><Text style={[styles.insightValue, isLight && { color: LIGHT.text }]}>{trades.length}</Text><Text style={[styles.insightNote, isLight && { color: LIGHT.muted }]}>Available history</Text></View>
+            <View style={[styles.insightCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>WINNING TRADES</Text><Text style={[styles.insightValue, { color: isLight ? "#28734F" : C.green }]}>{trades.filter(t => Number(t.profit ?? 0) > 0).length}</Text><Text style={[styles.insightNote, isLight && { color: LIGHT.muted }]}>Positive result</Text></View>
+            <View style={[styles.insightCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>LOSING TRADES</Text><Text style={[styles.insightValue, { color: C.red }]}>{trades.filter(t => Number(t.profit ?? 0) < 0).length}</Text><Text style={[styles.insightNote, isLight && { color: LIGHT.muted }]}>Negative result</Text></View>
+            <View style={[styles.insightCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>NET CLOSED P/L</Text><Text style={[styles.insightValue, { color: trades.reduce((sum, t) => sum + Number(t.profit ?? 0), 0) >= 0 ? (isLight ? "#28734F" : C.green) : C.red }]}>{money(trades.reduce((sum, t) => sum + Number(t.profit ?? 0), 0))}</Text><Text style={[styles.insightNote, isLight && { color: LIGHT.muted }]}>From returned history</Text></View>
           </View>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("ACCOUNT HEALTH")}
+            <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Engine</Text><Text style={[styles.insightResult, isLight && { color: LIGHT.text }]}>{engineText}</Text></View>
+            <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Open positions</Text><Text style={[styles.insightResult, isLight && { color: LIGHT.text }]}>{positions.length}</Text></View>
+            <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Today's P/L</Text><Text style={[styles.insightResult, { color: Number(account?.daily_pnl ?? 0) >= 0 ? (isLight ? "#28734F" : C.green) : C.red }]}>{account ? money(account.daily_pnl) : "—"}</Text></View>
+            <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Last synced</Text><Text style={[styles.insightResult, isLight && { color: LIGHT.text }]}>{lastUpdated || "Waiting for data"}</Text></View>
+          </View>
+          <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Insights use closed-trade history and the latest account snapshot received from your Windows PC.</Text>
         </>}
-
         {tab === "settings" && <>
-          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>SECURE REMOTE CONNECTION</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Settings</Text>
-          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("REMOTE WINDOWS CONNECTION")}
-            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Pair this phone using the one-time QR code on your Windows dashboard. Account snapshots and start/pause requests travel through the HTTPS relay, so your phone and PC can use different networks. No public PC port or local IP is needed.</Text>
-            <View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId && phoneSecret ? C.green : C.amber }]} /><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{installationId && phoneSecret ? "Remote phone access paired" : "Not paired"}</Text></View>
-            <Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => void refreshDashboard()}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>TEST RELAY / REFRESH</Text></Pressable>
-            {apiError ? <Text style={styles.errorText}>{apiError}</Text> : null}
-            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{lastUpdated ? "Last snapshot: " + lastUpdated : "No snapshot received yet."}</Text>
+          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>PERSONALIZE YOUR APP</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Settings</Text>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("APPEARANCE")}
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Choose the theme for AlgoGuardian on this phone.</Text>
+            <View style={styles.controlRow}>
+              <Pressable style={[styles.themeChoice, !isLight && styles.themeChoiceActive, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => { setIsLight(false); void SecureStore.setItemAsync("algoguardian_theme", "dark"); }}><Text style={[styles.themeChoiceText, !isLight && styles.themeChoiceTextActive, isLight && { color: LIGHT.text }]}>☾  DARK</Text></Pressable>
+              <Pressable style={[styles.themeChoice, isLight && styles.themeChoiceActive, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => { setIsLight(true); void SecureStore.setItemAsync("algoguardian_theme", "light"); }}><Text style={[styles.themeChoiceText, isLight && styles.themeChoiceTextActive, isLight && { color: LIGHT.gold }]}>☀  LIGHT</Text></Pressable>
+            </View>
           </View>
           <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("PHONE PUSH PAIRING")}
             <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Scan the one-time QR code generated in the Windows dashboard under Broker Accounts. Push notifications require a physical Android phone and a native development/production build, not Expo Go.</Text>
-            <Text style={[styles.registration, { color: installationId ? C.green : C.amber }]}>{installationId ? "PAIRED · " + registration : registration}</Text>
+            <Text style={[styles.registration, { color: installationId ? (isLight ? "#28734F" : C.green) : C.amber }]}>{installationId ? "PAIRED · " + registration : registration}</Text>
             <Pressable style={[styles.primaryButton, (!fcmToken || busy) && styles.disabledButton]} onPress={() => void openScanner()} disabled={!fcmToken || busy}><Text style={styles.primaryButtonText}>{busy ? "PLEASE WAIT…" : "SCAN PAIRING QR CODE"}</Text></Pressable>
             {showScanner && <View style={styles.scanner}><CameraView style={styles.camera} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={scanned ? undefined : handleBarcodeScanned} /><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Point your camera at the one-time QR code on the Windows dashboard.</Text><Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => setShowScanner(false)}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>CANCEL SCAN</Text></Pressable></View>}
             <Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => void unpairDevice()} disabled={busy}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>UNPAIR THIS PHONE</Text></Pressable>
             <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Notification permission: {permission}</Text>
           </View>
-          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("SECURITY & ARCHITECTURE")}<Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Trading and MT5 remain on your Windows PC. This mobile app sends requests to that PC and receives push alerts; the notification relay does not execute trades. Remote commands are accepted only through the relay and limited to engine start/pause. Public release still requires end-to-end security and isolation testing.</Text></View>
         </>}
       </ScrollView>
 
       <View style={[styles.tabbar, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
         {([
-          ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "♧", "ALERTS"], ["settings", "⚙", "SETTINGS"]
+          ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "◒", "INSIGHTS"], ["settings", "⚙", "SETTINGS"]
         ] as const).map(([key, icon, label]) => <Pressable key={key} onPress={() => setTab(key)} style={styles.tabItem}><Text style={[styles.tabIcon, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{icon}</Text><Text style={[styles.tabLabel, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{label}</Text>{tab === key ? <View style={styles.tabIndicator} /> : null}</Pressable>)}
       </View>
       {actionBusy ? <View style={styles.busyOverlay}><ActivityIndicator color={C.green} /><Text style={styles.busyText}>Communicating with Windows PC…</Text></View> : null}
@@ -428,6 +434,18 @@ const styles = StyleSheet.create({
   stopButton: { backgroundColor: "#3A2027", borderColor: "#663640" },
   stopText: { color: C.red, fontWeight: "900", fontSize: 10 },
   closedTradesList: { height: 390 },
+  openPositionsList: { height: 330 },
+  insightGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  insightCard: { width: "48%", flexGrow: 1, flexBasis: "43%", minHeight: 112, borderRadius: 15, padding: 14, backgroundColor: C.panel, borderWidth: 1, borderColor: "#302817", justifyContent: "center", gap: 5 },
+  insightLabel: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  insightValue: { color: C.text, fontSize: 20, fontWeight: "900" },
+  insightNote: { color: C.muted, fontSize: 10 },
+  insightLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.line },
+  insightResult: { color: C.text, fontSize: 11, fontWeight: "800", flexShrink: 1, textAlign: "right" },
+  themeChoice: { flex: 1, borderRadius: 11, borderWidth: 1, borderColor: "#4A3A1C", paddingVertical: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#17130B" },
+  themeChoiceActive: { borderColor: "#E8BD53", backgroundColor: "#2A2110" },
+  themeChoiceText: { color: C.muted, fontWeight: "900", fontSize: 11 },
+  themeChoiceTextActive: { color: "#E8BD53" },
   tradeRow: { flexDirection: "row", alignItems: "center", paddingVertical: 11, borderTopColor: "#223044", borderTopWidth: 1, gap: 9 },
   sidePill: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 6 },
   tradeMain: { flex: 1, minWidth: 0 },
