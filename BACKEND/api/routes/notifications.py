@@ -1,5 +1,9 @@
 """Secure QR-based phone pairing for one local AlgoGuardian installation."""
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+import base64
+import io
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from api.auth import require_authenticated_user
@@ -27,7 +31,23 @@ class DeviceRemoval(BaseModel):
 @router.post("/pairing-session")
 def create_pairing_session(request: Request, _user: dict = Depends(require_authenticated_user)):
     """Create a short-lived code for a QR displayed by the signed-in Windows dashboard."""
-    return create_code(str(request.base_url).rstrip("/"))
+    pairing = create_code(str(request.base_url).rstrip("/"))
+    payload = json.dumps({
+        "type": "algoguardian-pair",
+        "backendUrl": pairing["backend_url"],
+        "code": pairing["code"],
+    }, separators=(",", ":"))
+    try:
+        import qrcode
+        image = qrcode.make(payload)
+        output = io.BytesIO()
+        image.save(output, format="PNG")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="QR generation is unavailable. Install the backend QR-code dependency and restart.") from exc
+    return {
+        "qr_data_url": "data:image/png;base64," + base64.b64encode(output.getvalue()).decode("ascii"),
+        "expires_in_seconds": pairing["expires_in_seconds"],
+    }
 
 
 @router.post("/pair/claim")
