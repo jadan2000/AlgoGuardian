@@ -16,6 +16,7 @@ from services.experiment_journal import (
 
 
 SIGNALS_FILE = Path(__file__).resolve().parents[1] / "storage" / "signals.json"
+_last_rejection_alert_key = None
 
 
 def save_signal(signal):
@@ -50,6 +51,8 @@ def save_signal(signal):
 
 
 def run_bot():
+    global _last_rejection_alert_key
+
     print("=" * 60)
     print("BOT RUNNER STARTED")
     print("=" * 60)
@@ -96,9 +99,21 @@ def run_bot():
                     print("EXECUTION RESULT:", result)
                     record_execution(cycle_id, signal, result)
                     if result:
+                        _last_rejection_alert_key = None
                         symbol = str(signal.get("symbol") or signal.get("pair") or "trade")
-                        side = str(signal.get("type") or signal.get("direction") or "").upper()
+                        side = str(signal.get("signal") or signal.get("type") or signal.get("direction") or "").upper()
                         send_push("trade_opened", "Automated " + side + " " + symbol + " order opened.")
+                    else:
+                        # Avoid repeatedly alerting every five-second scan for
+                        # the same rejected signal and identical MT5 error.
+                        rejection_key = (
+                            str(signal.get("symbol") or signal.get("pair") or ""),
+                            str(signal.get("signal") or signal.get("type") or signal.get("direction") or ""),
+                            str(getattr(execution_engine, "last_error", None) or "order_rejected"),
+                        )
+                        if rejection_key != _last_rejection_alert_key:
+                            send_push("notification_error")
+                            _last_rejection_alert_key = rejection_key
                 saved = save_signal(signal)
                 if saved:
                     record_signal(cycle_id, signal)
@@ -117,13 +132,13 @@ def run_bot():
                     record_signal(cycle_id, error_signal)
             except Exception:
                 pass
-            record_error(cycle_id, f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
+            record_error(cycle_id, f"{type(exc).__name__}: {exc}\\n{traceback.format_exc()}")
             print("=" * 60)
             print("BOT ERROR")
             traceback.print_exc()
             print("=" * 60)
 
         # Five seconds is retained for existing UI responsiveness. Signal
-        # generation uses closed candles, so the same candle cannot create a
-        # second signal from changing intrabar values.
+        # generation uses closed candles, so the same candle cannot create
+        # a second signal from changing intrabar values.
         time.sleep(5)
