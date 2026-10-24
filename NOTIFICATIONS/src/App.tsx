@@ -369,6 +369,7 @@ export default function App() {
   );
 }
 
+// Mobile theme styles; keep this declaration on real source lines for Metro parsing.
 const styles = StyleSheet.create({
   brandMarkHorn: { position: "absolute", width: 9, height: 9, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#F3CF68", top: 7, right: 7, transform: [{ rotate: "8deg" }] },
   safe: { flex: 1, backgroundColor: C.bg },
