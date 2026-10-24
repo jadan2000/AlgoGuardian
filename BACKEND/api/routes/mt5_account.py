@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from api.auth import require_authenticated_user
 from services.mt5_credentials import CredentialStorageError, public_credentials, save_credentials
 from services.mt5_service import MT5Service
+from services.mt5_terminal_path import save_terminal_path, terminal_path_status
 
 def require_mt5_admin(user: dict = Depends(require_authenticated_user)) -> dict:
     admin_email = (os.getenv("MT5_ACCOUNT_ADMIN_EMAIL") or "").strip().casefold()
@@ -23,6 +24,10 @@ def require_mt5_admin(user: dict = Depends(require_authenticated_user)) -> dict:
 router = APIRouter(dependencies=[Depends(require_mt5_admin)])
 
 
+class MT5TerminalPathInput(BaseModel):
+    path: str = Field(min_length=1, max_length=1024)
+
+
 class MT5CredentialsInput(BaseModel):
     login: int = Field(gt=0)
     password: str = Field(min_length=1, max_length=256)
@@ -33,6 +38,7 @@ def _safe_status() -> dict:
     details = MT5Service.connection_status()
     return {
         **public_credentials(),
+        "terminal": terminal_path_status(),
         "connected": bool(details.get("connected")),
         "company": details.get("company"),
         "currency": details.get("currency"),
@@ -88,3 +94,20 @@ def disconnect_account():
     status["connected"] = False
     status["reason"] = "Disconnected by request."
     return status
+
+
+@router.get("/terminal-path")
+def get_terminal_path():
+    """Return the locally saved or auto-detected MT5 terminal path."""
+    return terminal_path_status()
+
+
+@router.post("/terminal-path")
+def update_terminal_path(payload: MT5TerminalPathInput):
+    """Validate and save the MT5 executable path on the machine running this backend."""
+    try:
+        path = save_terminal_path(payload.path)
+        # Do not restart an active terminal session just because its preferred path changed.
+        return {"success": True, "terminal": {"path": path, "detected": True, "source": "saved"}}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -7,7 +7,7 @@ import threading
 
 import MetaTrader5 as mt5
 
-from config import MT5_PATH
+from services.mt5_terminal_path import detect_terminal_path
 from services.mt5_credentials import CredentialStorageError, load_credentials
 
 
@@ -42,7 +42,7 @@ class MT5Service:
 
                 terminal = mt5.terminal_info()
                 if terminal is None:
-                    initialized = mt5.initialize(path=MT5_PATH) if MT5_PATH else mt5.initialize()
+                    terminal_path = detect_terminal_path()\n                    initialized = mt5.initialize(path=terminal_path) if terminal_path else mt5.initialize()
                     if not initialized:
                         cls._connected = False
                         return False

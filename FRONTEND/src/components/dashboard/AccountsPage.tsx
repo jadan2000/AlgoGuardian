@@ -18,6 +18,7 @@ type AccountStatus = {
   trade_mode?: string | null;
   trade_allowed?: boolean;
   reason?: string | null;
+  terminal?: { path: string | null; detected: boolean; source: string };
 };
 
 export default function AccountsPage() {
@@ -25,6 +26,8 @@ export default function AccountsPage() {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [server, setServer] = useState("");
+  const [terminalPath, setTerminalPath] = useState("");
+  const [savingTerminalPath, setSavingTerminalPath] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,6 +56,7 @@ export default function AccountsPage() {
     try {
       const data = await request("/status");
       setStatus(data);
+      if (data.terminal?.path) setTerminalPath(previous => previous || data.terminal.path);
       if (data.login) setLogin(previous => previous || String(data.login));
       if (data.server) setServer(previous => previous || data.server);
       if (showToast) toast.success(data.connected ? "MT5 is connected." : "Connection status refreshed.");
@@ -132,7 +136,27 @@ export default function AccountsPage() {
     }
   };
 
-  const busy = saving || action !== null;
+  const busy = saving || savingTerminalPath || action !== null;\n
+  const saveTerminalPath = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSavingTerminalPath(true);
+    setError("");
+    try {
+      const data = await request("/terminal-path", {
+        method: "POST",
+        body: JSON.stringify({ path: terminalPath.trim() }),
+      });
+      setTerminalPath(data.terminal.path);
+      setStatus(previous => previous ? { ...previous, terminal: data.terminal } : previous);
+      toast.success("MT5 terminal location saved on this computer.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not save MT5 terminal location.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSavingTerminalPath(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -177,6 +201,28 @@ export default function AccountsPage() {
             {action === "disconnect" ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Unplug className="mr-2 h-4 w-4" />} Disconnect
           </Button>
         </div>
+      </Card>
+
+      <Card className="p-5 sm:p-6">
+        <div className="mb-4 flex items-start gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary"><Server className="h-5 w-5" /></div>
+          <div>
+            <h2 className="font-semibold">MetaTrader 5 installation location</h2>
+            <p className="mt-1 text-sm text-muted-foreground">AlgoGuardian checks common installation folders automatically. If MT5 is installed elsewhere, enter the full path to its terminal executable.</p>
+          </div>
+        </div>
+        <form onSubmit={saveTerminalPath} className="space-y-3">
+          <label className="block space-y-2 text-sm font-medium">Terminal executable path
+            <input required value={terminalPath} onChange={event => setTerminalPath(event.target.value)} placeholder={String.raw`C:\Program Files\MetaTrader 5\terminal64.exe`} spellCheck={false} className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-mono text-sm font-normal outline-none focus:ring-2 focus:ring-ring" />
+          </label>
+          <p className="text-xs text-muted-foreground">{status?.terminal?.detected ? `Current location: ${status.terminal.source === "saved" ? "saved path" : "automatically detected"}` : "No MT5 installation was detected yet. Install MT5 or enter its executable path."}</p>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={busy || !terminalPath.trim()}>
+              {savingTerminalPath ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Server className="mr-2 h-4 w-4" />}
+              {savingTerminalPath ? "Validating…" : "Save terminal location"}
+            </Button>
+          </div>
+        </form>
       </Card>
 
       {error && <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /><p>{error}</p></div>}
