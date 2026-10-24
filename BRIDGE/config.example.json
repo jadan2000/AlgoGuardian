@@ -1,0 +1,8 @@
+{
+  "mt5_terminal_path": "C:\\Program Files\\MetaTrader 5\\terminal64.exe",
+  "dashboard_origin": "http://localhost:5173",
+  "port": 8765,
+  "notification_relay_url": "",
+  "notification_relay_api_key": "",
+  "notification_device_token": ""
+}
