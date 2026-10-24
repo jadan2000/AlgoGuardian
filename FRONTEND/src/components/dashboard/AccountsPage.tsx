@@ -18,6 +18,7 @@ type AccountStatus = {
   trade_mode?: string | null;
   trade_allowed?: boolean;
   reason?: string | null;
+  terminal?: { path: string | null; detected: boolean; source: string };
 };
 
 export default function AccountsPage() {
@@ -25,6 +26,8 @@ export default function AccountsPage() {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [server, setServer] = useState("");
+  const [terminalPath, setTerminalPath] = useState("");
+  const [savingTerminalPath, setSavingTerminalPath] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,6 +56,7 @@ export default function AccountsPage() {
     try {
       const data = await request("/status");
       setStatus(data);
+      if (data.terminal?.path) setTerminalPath(previous => previous || data.terminal.path);
       if (data.login) setLogin(previous => previous || String(data.login));
       if (data.server) setServer(previous => previous || data.server);
       if (showToast) toast.success(data.connected ? "MT5 is connected." : "Connection status refreshed.");
@@ -132,7 +136,27 @@ export default function AccountsPage() {
     }
   };
 
-  const busy = saving || action !== null;
+  const busy = saving || savingTerminalPath || action !== null;\n
+  const saveTerminalPath = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSavingTerminalPath(true);
+    setError("");
+    try {
+      const data = await request("/terminal-path", {
+        method: "POST",
+        body: JSON.stringify({ path: terminalPath.trim() }),
+      });
+      setTerminalPath(data.terminal.path);
+      setStatus(previous => previous ? { ...previous, terminal: data.terminal } : previous);
+      toast.success("MT5 terminal location saved on this computer.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not save MT5 terminal location.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSavingTerminalPath(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
