@@ -1,0 +1,26 @@
+name: Backend safety checks
+
+on:
+  push:
+    paths:
+      - "BACKEND/**"
+      - ".github/workflows/backend-safety.yml"
+  pull_request:
+    paths:
+      - "BACKEND/**"
+      - ".github/workflows/backend-safety.yml"
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile backend Python
+        run: python -m compileall -q BACKEND
+      - name: Test local notification registry
+        env:
+          PYTHONPATH: BACKEND
+        run: python -m unittest discover -s BACKEND/tests -v
