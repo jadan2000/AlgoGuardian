@@ -72,10 +72,10 @@ async function sendPush(token: string, event: string) {
   });
   if (!response.ok) throw new Error(`Push provider rejected delivery (HTTP ${response.status}).`);
 }
-function parseTokens(value: unknown): Array<{ token: string; device_name: string }> {
+function parseTokens(value: unknown): Array<{ token: string; device_name: string; phone_secret_hash?: string }> {
   if (!Array.isArray(value)) return [];
   return value.filter((item) => item && typeof item.token === "string" &&
-    typeof item.device_name === "string") as Array<{ token: string; device_name: string }>;
+    typeof item.device_name === "string") as Array<{ token: string; device_name: string; phone_secret_hash?: string }>;
 }
 
 Deno.serve(async (request) => {
@@ -111,12 +111,12 @@ Deno.serve(async (request) => {
       if (readError || !installation) throw new Error("Installation not found.");
       const tokens = parseTokens(installation.device_tokens).filter((device) => device.token !== body.token);
       if (tokens.length >= 10) return json({ error: "This installation has reached its device limit." }, 409);
-      tokens.push({ token: body.token, device_name: body.device_name.trim() });
+      const phoneSecret = crypto.randomUUID() + crypto.randomUUID() + crypto.randomUUID();\n      tokens.push({ token: body.token, device_name: body.device_name.trim(), phone_secret_hash: await sha256(phoneSecret) });
       const { error: saveError } = await db.from("notification_installations")
         .update({ device_tokens: tokens, updated_at: new Date().toISOString() })
         .eq("installation_id", session.installation_id);
       if (saveError) throw new Error("Could not register device.");
-      return json({ paired: true, installation_id: session.installation_id });
+      return json({ paired: true, installation_id: session.installation_id, phone_secret: phoneSecret });
     } catch {
       return json({ error: "Pairing relay temporarily unavailable." }, 503);
     }
@@ -165,6 +165,34 @@ Deno.serve(async (request) => {
   try {
     const auth = await authenticate(body);
     if (!auth) return json({ error: "Unauthorized installation." }, 401);
+    if (action === "publish_snapshot") {
+      if (!body.snapshot || typeof body.snapshot !== "object" || Array.isArray(body.snapshot) ||
+          JSON.stringify(body.snapshot).length > 100000) return json({ error: "Invalid or oversized snapshot." }, 400);
+      const snapshot = body.snapshot as Record<string, unknown>;
+      const { error } = await auth.db.from("notification_installations")
+        .update({ latest_snapshot: snapshot, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("installation_id", auth.row.installation_id);
+      if (error) return json({ error: "Could not save snapshot." }, 503);
+      return json({ published: true });
+    }
+    if (action === "poll_commands") {
+      const { data, error } = await auth.db.rpc("claim_installation_commands", {
+        p_installation_id: auth.row.installation_id, p_limit: 5,
+      });
+      if (error) return json({ error: "Could not poll commands." }, 503);
+      return json({ commands: data ?? [] });
+    }
+    if (action === "complete_command") {
+      if (typeof body.command_id !== "string" || !validUuid(body.command_id) ||
+          !["completed", "failed"].includes(String(body.status))) return json({ error: "Invalid command result." }, 400);
+      const { data, error } = await auth.db.from("installation_commands")
+        .update({ status: body.status, completed_at: new Date().toISOString(),
+          result: typeof body.result === "object" && body.result !== null ? body.result : {} })
+        .eq("id", body.command_id).eq("installation_id", auth.row.installation_id).eq("status", "claimed")
+        .select("id").maybeSingle();
+      if (error) return json({ error: "Could not save command result." }, 503);
+      return json({ completed: Boolean(data) });
+    }
     if (action === "create_pairing") {
       const code = crypto.randomUUID() + crypto.randomUUID();
       const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString();
