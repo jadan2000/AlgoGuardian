@@ -92,6 +92,55 @@ Deno.serve(async (request) => {
   } catch { return json({ error: "Invalid JSON." }, 400); }
 
   const action = body.action;
+  // Phone pairing is claimed over HTTPS through this relay, never by reaching the PC's LAN address.
+  if (action === "claim_pairing") {
+    if (typeof body.code !== "string" || body.code.length < 32 || body.code.length > 128 ||
+        typeof body.token !== "string" || body.token.length < 20 || body.token.length > 4096 ||
+        typeof body.device_name !== "string" || !body.device_name.trim() || body.device_name.length > 120) {
+      return json({ error: "Invalid pairing request." }, 400);
+    }
+    try {
+      const db = serviceClient();
+      const codeHash = await sha256(body.code);
+      const { data: session, error: claimError } = await db.from("notification_pairing_sessions")
+        .update({ status: "claimed", claimed_at: new Date().toISOString() })
+        .eq("code_hash", codeHash).eq("status", "pending")
+        .gt("expires_at", new Date().toISOString())
+        .select("installation_id").maybeSingle();
+      if (claimError) throw new Error("Pairing lookup failed.");
+      if (!session) return json({ error: "This QR code expired or was already used. Generate a fresh QR on Windows." }, 401);
+      const { data: installation, error: readError } = await db.from("notification_installations")
+        .select("device_tokens").eq("installation_id", session.installation_id).maybeSingle();
+      if (readError || !installation) throw new Error("Installation not found.");
+      const tokens = parseTokens(installation.device_tokens).filter((device) => device.token !== body.token);
+      if (tokens.length >= 10) return json({ error: "This installation has reached its device limit." }, 409);
+      tokens.push({ token: body.token, device_name: body.device_name.trim() });
+      const { error: saveError } = await db.from("notification_installations")
+        .update({ device_tokens: tokens, updated_at: new Date().toISOString() })
+        .eq("installation_id", session.installation_id);
+      if (saveError) throw new Error("Could not register device.");
+      return json({ paired: true, installation_id: session.installation_id });
+    } catch {
+      return json({ error: "Pairing relay temporarily unavailable." }, 503);
+    }
+  }
+  if (action === "remove_device_public") {
+    if (!validUuid(body.installation_id) || typeof body.token !== "string" ||
+        body.token.length < 20 || body.token.length > 4096) return json({ error: "Invalid unpair request." }, 400);
+    try {
+      const db = serviceClient();
+      const { data, error } = await db.from("notification_installations").select("device_tokens")
+        .eq("installation_id", body.installation_id).maybeSingle();
+      if (error || !data) return json({ error: "Installation not found." }, 404);
+      const tokens = parseTokens(data.device_tokens);
+      const next = tokens.filter((device) => device.token !== body.token);
+      const { error: updateError } = await db.from("notification_installations")
+        .update({ device_tokens: next, updated_at: new Date().toISOString() })
+        .eq("installation_id", body.installation_id);
+      if (updateError) throw new Error("Could not remove device.");
+      return json({ removed: next.length !== tokens.length });
+    } catch { return json({ error: "Unpair relay temporarily unavailable." }, 503); }
+  }
   if (action === "register_installation") {
     if (!validUuid(body.installation_id) || typeof body.installation_secret !== "string" ||
         body.installation_secret.length < 40 || body.installation_secret.length > 256) return json({ error: "Invalid installation identity." }, 400);
