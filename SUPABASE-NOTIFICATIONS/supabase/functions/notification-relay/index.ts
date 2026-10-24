@@ -111,7 +111,8 @@ Deno.serve(async (request) => {
       if (readError || !installation) throw new Error("Installation not found.");
       const tokens = parseTokens(installation.device_tokens).filter((device) => device.token !== body.token);
       if (tokens.length >= 10) return json({ error: "This installation has reached its device limit." }, 409);
-      const phoneSecret = crypto.randomUUID() + crypto.randomUUID() + crypto.randomUUID();\n      tokens.push({ token: body.token, device_name: body.device_name.trim(), phone_secret_hash: await sha256(phoneSecret) });
+      const phoneSecret = crypto.randomUUID() + crypto.randomUUID() + crypto.randomUUID();
+      tokens.push({ token: body.token, device_name: body.device_name.trim(), phone_secret_hash: await sha256(phoneSecret) });
       const { error: saveError } = await db.from("notification_installations")
         .update({ device_tokens: tokens, updated_at: new Date().toISOString() })
         .eq("installation_id", session.installation_id);
