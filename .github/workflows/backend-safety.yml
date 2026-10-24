@@ -24,3 +24,18 @@ jobs:
         env:
           PYTHONPATH: BACKEND
         run: python -m unittest discover -s BACKEND/tests -v
+
+  firebase-relay-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: FIREBASE/functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install relay dependencies
+        run: npm install --ignore-scripts
+      - name: Check Firebase relay syntax
+        run: node --check index.js
