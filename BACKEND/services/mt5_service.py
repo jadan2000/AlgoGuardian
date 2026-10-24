@@ -1,7 +1,7 @@
 """Process-wide MetaTrader 5 connection manager using encrypted Accounts storage.
 
 The MetaTrader5 Python package uses one terminal session per Python process.
-This worker intentionally manages one account.
+This worker intentionally manages one account on the laptop running AlgoGuardian.
 """
 import threading
 
@@ -25,11 +25,46 @@ class MT5Service:
         except (TypeError, ValueError, KeyError):
             return False
         actual_server = str(getattr(account, "server", "") or "").strip()
-        return bool(actual_server) and actual_server.casefold() == str(credentials["server"]).casefold()
+        return bool(actual_server) and actual_server.casefold() == str(credentials["server"]).strip().casefold()
+
+    @classmethod
+    def _initialize_terminal(cls, credentials) -> bool:
+        """Initialize MT5 on this laptop, attempting the saved credentials immediately."""
+        terminal_path = detect_terminal_path()
+        login_options = {
+            "login": int(credentials["login"]),
+            "password": credentials["password"],
+            "server": credentials["server"],
+        }
+
+        initialized = (
+            mt5.initialize(path=terminal_path, **login_options)
+            if terminal_path
+            else mt5.initialize(**login_options)
+        )
+        if initialized:
+            return True
+
+        # Some existing terminal installations initialize successfully only before
+        # login is requested. Retry initialization first, then perform mt5.login().
+        initialization_error = mt5.last_error()
+        try:
+            mt5.shutdown()
+        except (RuntimeError, TypeError):
+            pass
+
+        initialized = mt5.initialize(path=terminal_path) if terminal_path else mt5.initialize()
+        if not initialized:
+            cls._last_connection_error = mt5.last_error() or initialization_error
+            return False
+        return True
+
+    _last_connection_error = None
 
     @classmethod
     def connect(cls) -> bool:
         with cls._lock:
+            cls._last_connection_error = None
             credentials = load_credentials()
             if not credentials:
                 cls._connected = False
@@ -42,9 +77,7 @@ class MT5Service:
 
                 terminal = mt5.terminal_info()
                 if terminal is None:
-                    terminal_path = detect_terminal_path()
-                    initialized = mt5.initialize(path=terminal_path) if terminal_path else mt5.initialize()
-                    if not initialized:
+                    if not cls._initialize_terminal(credentials):
                         cls._connected = False
                         return False
 
@@ -59,14 +92,30 @@ class MT5Service:
                     server=credentials["server"],
                 )
                 if not logged_in:
+                    cls._last_connection_error = mt5.last_error()
                     cls._connected = False
                     return False
 
-                cls._connected = cls._matches_account(mt5.account_info(), credentials)
+                account = mt5.account_info()
+                cls._connected = cls._matches_account(account, credentials)
+                if not cls._connected:
+                    cls._last_connection_error = mt5.last_error()
                 return cls._connected
-            except (RuntimeError, TypeError, ValueError, CredentialStorageError):
+            except (RuntimeError, TypeError, ValueError, CredentialStorageError) as exc:
+                cls._last_connection_error = str(exc)
                 cls._connected = False
                 return False
+
+    @classmethod
+    def reconnect(cls) -> bool:
+        """Refresh the Python MT5 session and connect using the currently saved account."""
+        with cls._lock:
+            try:
+                mt5.shutdown()
+            except (RuntimeError, TypeError):
+                pass
+            cls._connected = False
+            return cls.connect()
 
     @classmethod
     def shutdown(cls):
@@ -120,6 +169,8 @@ class MT5Service:
                 status["reason"] = "No broker account saved. Add your MT5 credentials in Accounts."
             elif not connected:
                 status["reason"] = "MT5 is not connected to the saved account."
+                if cls._last_connection_error:
+                    status["reason"] += f" MT5 error: {cls._last_connection_error}"
             return status
 
     @staticmethod
