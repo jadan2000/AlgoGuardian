@@ -26,7 +26,7 @@ const TITLES = {
   notification_error: "AlgoGuardian needs attention",
 };
 const TOKEN_MAX = 4096;
-const INSTALLATION_ID = /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
+const INSTALLATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function sendError(res, status, message) {
   return res.status(status).json({ error: message });
