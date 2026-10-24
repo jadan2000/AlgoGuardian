@@ -18,12 +18,14 @@ Notifications.setNotificationHandler({
 });
 
 type AlertItem = { title: string; body: string; receivedAt: string };
-const URL_KEY = "algoguardian_local_backend_url";
+const URL_KEY = "algoguardian_notification_relay_url";
+const INSTALLATION_KEY = "algoguardian_notification_installation_id";
 
 export default function App() {
   const [permission, setPermission] = useState("Checking");
   const [fcmToken, setFcmToken] = useState("");
   const [backendUrl, setBackendUrl] = useState("");
+  const [installationId, setInstallationId] = useState("");
   const [registration, setRegistration] = useState("Not paired");
   const [busy, setBusy] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -35,8 +37,10 @@ export default function App() {
     let mounted = true;
     const setup = async () => {
       const savedUrl = await SecureStore.getItemAsync(URL_KEY);
+      const savedInstallationId = await SecureStore.getItemAsync(INSTALLATION_KEY);
       if (mounted) {
         if (savedUrl) setBackendUrl(savedUrl);
+        if (savedInstallationId) setInstallationId(savedInstallationId);
       }
 
       if (!Device.isDevice) {
@@ -111,7 +115,7 @@ export default function App() {
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
     if (scanned || busy) return;
     setScanned(true);
-    let pairing: { type?: string; backendUrl?: string; code?: string };
+    let pairing: { type?: string; relayUrl?: string; code?: string };
     try {
       pairing = JSON.parse(data);
     } catch {
@@ -119,8 +123,9 @@ export default function App() {
       Alert.alert("Invalid QR code", "Scan the one-time AlgoGuardian pairing QR displayed in your Windows dashboard.");
       return;
     }
-    const url = (pairing.backendUrl || "").trim().replace(/\/+$/, "");
-    if (pairing.type !== "algoguardian-pair" || !/^https?:\/\//i.test(url) || !pairing.code) {
+    const url = (pairing.relayUrl || "").trim().replace(/\/+$/, "");
+    if (pairing.type !== "algoguardian-pair" || !/^https:\/\//i.test(url) ||
+        !url.includes("/functions/v1/notification-relay") || !pairing.code) {
       setShowScanner(false);
       Alert.alert("Invalid QR code", "This QR code is not an AlgoGuardian phone-pairing code.");
       return;
@@ -134,10 +139,11 @@ export default function App() {
     setBusy(true);
     setRegistration("Pairing with your Windows PC…");
     try {
-      const response = await fetch(url + "/api/notifications/pair/claim", {
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "claim_pairing",
           code: pairing.code,
           token: fcmToken,
           device_name: Device.deviceName || "Android phone"
@@ -145,8 +151,11 @@ export default function App() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.detail || "Pairing failed (HTTP " + response.status + ").");
+      if (typeof result.installation_id !== "string") throw new Error("The relay did not return an installation ID.");
       await SecureStore.setItemAsync(URL_KEY, url);
+      await SecureStore.setItemAsync(INSTALLATION_KEY, result.installation_id);
       setBackendUrl(url);
+      setInstallationId(result.installation_id);
       setRegistration("Paired with your Windows installation");
       setShowScanner(false);
       Alert.alert("Phone paired", "This phone will receive alerts from the Windows installation you scanned.");
@@ -154,7 +163,7 @@ export default function App() {
       const detail = error instanceof Error ? error.message : "Could not reach the Windows backend.";
       setRegistration("Pairing failed");
       setShowScanner(false);
-      Alert.alert("Could not pair phone", detail + "\n\nMake sure both devices are on the same trusted Wi-Fi network and the Windows backend is running.");
+      Alert.alert("Could not pair phone", detail + "\n\nGenerate a fresh pairing QR on the Windows dashboard if the code has expired.");
     } finally {
       setBusy(false);
     }
@@ -162,28 +171,32 @@ export default function App() {
 
   const unpairDevice = async () => {
     const url = normalizedUrl();
-    if (!url || !fcmToken) {
+    if (!url || !installationId || !fcmToken) {
       await SecureStore.deleteItemAsync(URL_KEY);
+      await SecureStore.deleteItemAsync(INSTALLATION_KEY);
       setBackendUrl("");
-      setRegistration("Pairing details cleared. If the PC is offline, remove the old device from that installation when it is available.");
+      setInstallationId("");
+      setRegistration("Pairing details cleared.");
       return;
     }
     setBusy(true);
     try {
-      const response = await fetch(url + "/api/notifications/pair/unpair", {
-        method: "DELETE",
+      const response = await fetch(url, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: fcmToken })
+        body: JSON.stringify({ action: "remove_device_public", installation_id: installationId, token: fcmToken })
       });
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
-        throw new Error(result.detail || "Unpair request failed.");
+        throw new Error(result.error || "Unpair request failed (HTTP " + response.status + ").");
       }
       await SecureStore.deleteItemAsync(URL_KEY);
+      await SecureStore.deleteItemAsync(INSTALLATION_KEY);
       setBackendUrl("");
+      setInstallationId("");
       setRegistration("Phone unpaired");
     } catch (error) {
-      Alert.alert("Could not unpair phone", error instanceof Error ? error.message : "Try again when the Windows PC is reachable.");
+      Alert.alert("Could not unpair phone", error instanceof Error ? error.message : "Try again.");
     } finally {
       setBusy(false);
     }
@@ -209,7 +222,7 @@ export default function App() {
         </View>
         <View style={styles.card}>
           <Text style={styles.cardLabel}>PAIR WITH YOUR WINDOWS PC</Text>
-          <Text style={styles.hint}>On your Windows dashboard, open Broker Accounts and generate a one-time pairing QR. Scan it here while both devices are on the same trusted Wi-Fi network.</Text>
+          <Text style={styles.hint}>On your Windows dashboard, open Broker Accounts and generate a one-time pairing QR. Scan it here. Pairing works over HTTPS, even when the phone is on mobile data or a different Wi-Fi network.</Text>
           <Text style={styles.registration}>{registration}</Text>
           <Pressable style={[styles.primaryButton, (busy || !fcmToken) && styles.disabledButton]} onPress={() => void openScanner()} disabled={busy || !fcmToken}>
             {busy ? <ActivityIndicator color="#092319" /> : <Text style={styles.primaryButtonText}>Scan pairing QR code</Text>}
