@@ -7,6 +7,7 @@ import * as Notifications from "expo-notifications";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -117,7 +118,7 @@ export default function App() {
       setLatest(items => {
         if (items.some(existing => existing.id === item.id)) return items;
         const next = [item, ...items].slice(0, 50);
-        void SecureStore.setItemAsync(NOTIFICATIONS_KEY, JSON.stringify(next)).catch(() => {});
+        void AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(next)).catch(error => console.warn("Could not save local notification history", error));
         return next;
       });
     };
@@ -127,7 +128,7 @@ export default function App() {
     };
     const syncNotificationHistory = async () => {
       try {
-        const saved = await SecureStore.getItemAsync(NOTIFICATIONS_KEY);
+        const saved = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) setLatest(items => {
