@@ -34,7 +34,10 @@ def _require_pairing_secret(supplied: str | None) -> None:
 def notification_status():
     if not pairing_secret_configured():
         return {"configured": False, "paired_devices": 0}
-    return {"configured": True, "paired_devices": len(list_devices())}
+    try:
+        return {"configured": True, "paired_devices": len(list_devices())}
+    except NotificationRegistryError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/devices")
