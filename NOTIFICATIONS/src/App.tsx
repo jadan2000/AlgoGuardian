@@ -278,6 +278,7 @@ export default function App() {
       <View style={[styles.topbar, isLight && { backgroundColor: LIGHT.top, borderBottomColor: LIGHT.line }]}>
         <View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandMarkHorn} /></View>
         <View style={{ flex: 1 }}><Text style={[styles.brand, isLight && { color: LIGHT.text }]}>AlgoGuardian</Text><Text style={[styles.brandCaption, isLight && { color: LIGHT.gold }]}>PRIVATE TRADING CONSOLE</Text></View>
+        <Pressable accessibilityLabel={isLight ? "Switch to dark mode" : "Switch to light mode"} onPress={() => { const next = !isLight; setIsLight(next); void SecureStore.setItemAsync("algoguardian_theme", next ? "light" : "dark"); }} style={[styles.themeToggle, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]}><Text style={[styles.themeToggleText, isLight && { color: LIGHT.gold }]}>{isLight ? "☀" : "☾"}</Text></Pressable>
         <View style={[styles.connectionDot, { backgroundColor: isOnline ? C.green : C.amber }]} />
         <Text style={styles.topStatus}>{isOnline ? "PC ONLINE" : "PC LINK"}</Text>
       </View>
@@ -290,15 +291,15 @@ export default function App() {
         {tab === "home" && <>
           <View style={styles.greetingRow}><View><Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>YOUR ACCOUNT AT A GLANCE</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Dashboard</Text></View><Pressable style={styles.refreshButton} onPress={() => void refreshDashboard()}><Text style={styles.refreshText}>{loading ? "SYNCING…" : "↻ REFRESH"}</Text></Pressable></View>
           <View style={[styles.engineBanner, { borderColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#285B47" : C.line }]}>
-            <View style={{ flex: 1 }}><Text style={styles.engineCaption}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? C.green : bot?.kill_switch ? C.red : C.text }]}>{engineText}</Text><Text style={styles.engineDetail}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows connection"}</Text></View>
+            <View style={{ flex: 1 }}><Text style={[styles.engineCaption, isLight && { color: LIGHT.muted }]}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? C.green : bot?.kill_switch ? C.red : C.text }]}>{engineText}</Text><Text style={[styles.engineDetail, isLight && { color: LIGHT.muted }]}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows connection"}</Text></View>
             <View style={[styles.engineIcon, { backgroundColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#163D32" : "#263245" }]}><Text style={{ fontSize: 22, color: bot?.running && !bot?.paused ? C.green : C.muted }}>⌁</Text></View>
           </View>
           {apiError ? <View style={styles.errorBox}><Text style={styles.errorText}>{apiError}</Text><Pressable onPress={() => setTab("settings")}><Text style={styles.errorLink}>OPEN SETTINGS ↗</Text></Pressable></View> : null}
           <View style={[styles.balanceCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
             <Text style={[styles.balanceLabel, isLight && { color: LIGHT.muted }]}>ACCOUNT EQUITY</Text>
             <Text style={[styles.balanceValue, isLight && { color: LIGHT.text }]}>{account ? money(account.equity) : "—"}</Text>
-            <View style={styles.balanceDivider} />
-            <View style={styles.balanceBottom}><View><Text style={styles.balanceSmallLabel}>BALANCE</Text><Text style={styles.balanceSmallValue}>{account ? money(account.balance) : "—"}</Text></View><View style={{ alignItems: "flex-end" }}><Text style={styles.balanceSmallLabel}>FLOATING P/L</Text><Text style={[styles.balanceSmallValue, { color: Number(account?.profit ?? 0) >= 0 ? C.green : C.red }]}>{account ? money(account.profit) : "—"}</Text></View></View>
+            <View style={[styles.balanceDivider, isLight && { backgroundColor: LIGHT.line }]} />
+            <View style={styles.balanceBottom}><View><Text style={[styles.balanceSmallLabel, isLight && { color: LIGHT.muted }]}>BALANCE</Text><Text style={[styles.balanceSmallValue, isLight && { color: LIGHT.text }]}>{account ? money(account.balance) : "—"}</Text></View><View style={{ alignItems: "flex-end" }}><Text style={[styles.balanceSmallLabel, isLight && { color: LIGHT.muted }]}>FLOATING P/L</Text><Text style={[styles.balanceSmallValue, { color: Number(account?.profit ?? 0) >= 0 ? (isLight ? "#28734F" : C.green) : C.red }]}>{account ? money(account.profit) : "—"}</Text></View></View>
           </View>
           <View style={styles.metricGrid}>
             {metric("TODAY'S P/L", account ? money(account.daily_pnl) : "—", account ? (Number(account.daily_pnl_percent ?? 0) >= 0 ? "+" : "") + num(account.daily_pnl_percent) + "%" : "Live result", Number(account?.daily_pnl ?? 0) >= 0)}
@@ -344,13 +345,6 @@ export default function App() {
 
         {tab === "settings" && <>
           <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>SECURE REMOTE CONNECTION</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Settings</Text>
-          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
-            {cardTitle("APPEARANCE")}
-            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Choose your preferred app appearance.</Text>
-            <Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => { const next = !isLight; setIsLight(next); void SecureStore.setItemAsync("algoguardian_theme", next ? "light" : "dark"); }}>
-              <Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>{isLight ? "☀  LIGHT MODE · ACTIVE" : "☾  SWITCH TO LIGHT MODE"}</Text>
-            </Pressable>
-          </View>
           <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("REMOTE WINDOWS CONNECTION")}
             <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Pair this phone using the one-time QR code on your Windows dashboard. Account snapshots and start/pause requests travel through the HTTPS relay, so your phone and PC can use different networks. No public PC port or local IP is needed.</Text>
             <View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId && phoneSecret ? C.green : C.amber }]} /><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{installationId && phoneSecret ? "Remote phone access paired" : "Not paired"}</Text></View>
@@ -391,6 +385,8 @@ const styles = StyleSheet.create({
   brandCaption: { color: "#C7A34A", fontSize: 8, letterSpacing: 1.6, marginTop: 3, fontWeight: "800" },
   connectionDot: { width: 7, height: 7, borderRadius: 5 },
   topStatus: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.7 },
+  themeToggle: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: "#59451D", backgroundColor: "#17130A", alignItems: "center", justifyContent: "center" },
+  themeToggleText: { color: "#E8BD53", fontSize: 19, fontWeight: "800" },
   page: { padding: 18, paddingBottom: 124, gap: 16 },
   greetingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 2 },
   eyebrow: { color: "#D8AF46", fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginBottom: 7 },
