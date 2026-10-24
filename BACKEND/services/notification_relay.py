@@ -12,6 +12,7 @@ _IDENTITY_FILE = Path(__file__).resolve().parents[1] / "storage" / "notification
 _LOCK = threading.RLock()
 _ACTIONS = {
     "/v1/installations/register": "register_installation",
+    "/v1/pairing/create": "create_pairing",
     "/v1/devices/register": "register_device",
     "/v1/devices/remove": "remove_device",
     "/v1/notifications/send": "send_notification",
@@ -76,6 +77,11 @@ def relay_post(path: str, payload: dict) -> dict:
 
 def ensure_registered() -> None:
     relay_post("/v1/installations/register", {})
+
+
+def create_remote_pairing() -> dict:
+    ensure_registered()
+    return relay_post("/v1/pairing/create", {})
 
 
 def register_remote_device(token: str, device_name: str) -> None:
