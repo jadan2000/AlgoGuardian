@@ -12,6 +12,7 @@ import { SettingsPanel } from "@/components/dashboard/SettingsPanel";
 import { LogsPanel } from "@/components/dashboard/LogsPanel";
 import AccountsPage from "@/components/dashboard/AccountsPage";
 import HowToUsePage from "@/components/dashboard/HowToUsePage";
+import RequirementsPage from "@/components/dashboard/RequirementsPage";
 import Sidebar from "@/components/layout/Sidebar";
 
 import { useEffect, useRef } from "react";
@@ -184,6 +185,8 @@ const Index = () => {
           {activeTab === "accounts" && <AccountsPage />}
 
           {activeTab === "how-to-use" && <HowToUsePage />}
+
+          {activeTab === "requirements" && <RequirementsPage />}
 
         </main>
       </div>
