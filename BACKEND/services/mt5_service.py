@@ -42,7 +42,8 @@ class MT5Service:
 
                 terminal = mt5.terminal_info()
                 if terminal is None:
-                    terminal_path = detect_terminal_path()\n                    initialized = mt5.initialize(path=terminal_path) if terminal_path else mt5.initialize()
+                    terminal_path = detect_terminal_path()
+                    initialized = mt5.initialize(path=terminal_path) if terminal_path else mt5.initialize()
                     if not initialized:
                         cls._connected = False
                         return False
