@@ -38,11 +38,10 @@ def _firebase_app():
 
 
 def _send(event: str, message: str) -> None:
-    tokens = registered_tokens()
-    if not tokens:
-        return
-
     try:
+        tokens = registered_tokens()
+        if not tokens:
+            return
         from firebase_admin import messaging
 
         app = _firebase_app()
