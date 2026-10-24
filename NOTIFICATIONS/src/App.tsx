@@ -258,7 +258,7 @@ export default function App() {
   );
 
   const cardTitle = (title: string, trailing?: string) => (
-    <View style={[styles.cardHeading, isLight && { color: LIGHT.text }]}><Text style={styles.cardTitle}>{title}</Text>{trailing ? <Text style={styles.cardTrailing}>{trailing}</Text> : null}</View>
+    <View style={styles.cardHeading}><Text style={[styles.cardTitle, isLight && { color: LIGHT.text }]}>{title}</Text>{trailing ? <Text style={[styles.cardTrailing, isLight && { color: LIGHT.muted }]}>{trailing}</Text> : null}</View>
   );
 
   const renderPosition = (trade: Position, index: number) => {
