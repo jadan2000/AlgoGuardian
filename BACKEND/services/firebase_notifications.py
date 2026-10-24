@@ -1,6 +1,7 @@
 """Best-effort notification-only relay client; never carries trading or broker data."""
 import threading
 
+from services.notification_devices import registered_tokens
 from services.notification_relay import NotificationRelayError, send_remote_notification
 
 _EVENT_TITLES = {
@@ -18,7 +19,7 @@ _EVENT_TITLES = {
 
 def _send(event: str, message: str) -> None:
     try:
-        send_remote_notification(event, f"{_EVENT_TITLES.get(event, 'AlgoGuardian alert')}: {message[:200]}")
+        send_remote_notification(event, message[:240])
     except NotificationRelayError as exc:
         # Push failures are deliberately isolated from the trading loop.
         print(f"[FCM relay] Notification send failed: {exc}")
@@ -28,6 +29,12 @@ def send_push(event: str, message: str) -> None:
     """Send a notification asynchronously; failure never blocks trade execution."""
     if event not in _EVENT_TITLES:
         print(f"[FCM relay] Ignoring unknown notification event: {event}")
+        return
+    try:
+        if not registered_tokens():
+            return
+    except Exception as exc:
+        print(f"[FCM relay] Device registry unavailable: {type(exc).__name__}")
         return
     threading.Thread(
         target=_send,
