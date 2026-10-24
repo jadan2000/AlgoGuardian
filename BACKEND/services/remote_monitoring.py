@@ -1,5 +1,6 @@
 """Background bridge for read-only account snapshots and engine-only remote commands."""
 import threading
+import time
 from datetime import datetime, timezone
 
 from services import bot_state
@@ -7,15 +8,23 @@ from services.notification_relay import relay_post, NotificationRelayError
 
 _STOP = threading.Event()
 _THREAD = None
+_TRADES_REFRESH_SECONDS = 60
+_last_trades_refresh = 0.0
+_cached_trades = []
 
 
 def _snapshot():
+    global _last_trades_refresh, _cached_trades
     from api.routes.account import get_account
     from api.routes.bot import get_bot_status
     from api.routes.trades import list_trades
     account = get_account()
     bot = get_bot_status()
-    recent_trades = list_trades()
+    if time.monotonic() - _last_trades_refresh >= _TRADES_REFRESH_SECONDS:
+        recent_trades = list_trades()
+        _cached_trades = recent_trades if isinstance(recent_trades, list) else []
+        _last_trades_refresh = time.monotonic()
+    recent_trades = _cached_trades
     if not isinstance(account, dict) or "error" in account:
         account = None
     if not isinstance(bot, dict):
