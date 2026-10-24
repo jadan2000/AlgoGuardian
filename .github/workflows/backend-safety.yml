@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - "BACKEND/**"
+      - "FIREBASE/**"
+      - "NOTIFICATIONS/**"
+      - "FRONTEND/**"
       - ".github/workflows/backend-safety.yml"
   pull_request:
     paths:
