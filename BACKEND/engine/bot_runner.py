@@ -6,6 +6,7 @@ from pathlib import Path
 from engine.signal_engine import SignalEngine
 from engine.execution_engine import ExecutionEngine
 from services import bot_state
+from services.firebase_notifications import send_push
 from services.experiment_journal import (
     record_error,
     record_execution,
@@ -94,6 +95,10 @@ def run_bot():
                         signal["fix"] = getattr(execution_engine, "last_fix", None) or "Use the rejection details to correct the relevant Settings value, account condition, or MT5 connection issue. Do not increase risk just to force an order."
                     print("EXECUTION RESULT:", result)
                     record_execution(cycle_id, signal, result)
+                    if result:
+                        symbol = str(signal.get("symbol") or signal.get("pair") or "trade")
+                        side = str(signal.get("type") or signal.get("direction") or "").upper()
+                        send_push("trade_opened", "Automated " + side + " " + symbol + " order opened.")
                 saved = save_signal(signal)
                 if saved:
                     record_signal(cycle_id, signal)
