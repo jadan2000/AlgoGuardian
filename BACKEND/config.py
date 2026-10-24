@@ -4,5 +4,4 @@ import os
 
 load_dotenv()
 
-# Optional absolute path to terminal64.exe; credentials are managed in Accounts.
-MT5_PATH = (os.getenv("MT5_PATH") or "").strip() or None
+# MT5 terminal location is detected and saved locally through the Accounts page.
