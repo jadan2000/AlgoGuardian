@@ -2,6 +2,7 @@
 import base64
 import io
 import json
+import os
 import socket
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -32,6 +33,8 @@ class DeviceRemoval(BaseModel):
 @router.post("/pairing-session")
 def create_pairing_session(request: Request, _user: dict = Depends(require_authenticated_user)):
     """Create a short-lived code for a QR displayed by the signed-in Windows dashboard."""
+    if not (os.getenv("NOTIFICATION_RELAY_URL") or "").strip().startswith("https://"):
+        raise HTTPException(status_code=503, detail="Firebase notification relay is not configured. Set NOTIFICATION_RELAY_URL in the private backend .env and restart.")
     base_url = str(request.base_url).rstrip("/")
     hostname = request.url.hostname or ""
     if hostname.lower() in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}:
@@ -100,7 +103,7 @@ def unpair_device(payload: DeviceRemoval):
 @router.get("/status")
 def notification_status(_user: dict = Depends(require_authenticated_user)):
     try:
-        return {"configured": True, "paired_devices": len(list_devices())}
+        return {"configured": (os.getenv("NOTIFICATION_RELAY_URL") or "").strip().startswith("https://"), "paired_devices": len(list_devices())}
     except NotificationRegistryError as exc:
         raise HTTPException(status_code=500, detail="Notification registry is unreadable.") from exc
 
