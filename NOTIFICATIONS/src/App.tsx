@@ -69,7 +69,7 @@ export default function App() {
   const [scanned, setScanned] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [latest, setLatest] = useState<AlertItem[]>([]);
-  const [tab, setTab] = useState<"home" | "trades" | "alerts" | "settings">("home");
+  const [tab, setTab] = useState<"home" | "trades" | "alerts" | "notifications" | "settings">("home");
   const [isLight, setIsLight] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [bot, setBot] = useState<BotStatus | null>(null);
@@ -280,6 +280,7 @@ export default function App() {
         <View style={{ flex: 1 }}><Text style={[styles.brand, isLight && { color: LIGHT.text }]}>AlgoGuardian</Text><Text style={[styles.brandCaption, isLight && { color: LIGHT.gold }]}>PRIVATE TRADING CONSOLE</Text></View>
         <View style={[styles.connectionDot, { backgroundColor: isOnline ? C.green : C.amber }]} />
         <Text style={styles.topStatus}>{isOnline ? "PC ONLINE" : "PC LINK"}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={isLight ? "Switch to dark theme" : "Switch to light theme"} style={[styles.themeToggle, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => { const next = !isLight; setIsLight(next); void SecureStore.setItemAsync("algoguardian_theme", next ? "light" : "dark"); }}><Text style={[styles.themeToggleText, isLight && { color: LIGHT.gold }]}>{isLight ? "☾" : "☀"}</Text></Pressable>
       </View>
 
       <ScrollView
@@ -348,9 +349,18 @@ export default function App() {
             <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Engine</Text><Text style={[styles.insightResult, isLight && { color: LIGHT.text }]}>{engineText}</Text></View>
             <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Open positions</Text><Text style={[styles.insightResult, isLight && { color: LIGHT.text }]}>{positions.length}</Text></View>
             <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Today's P/L</Text><Text style={[styles.insightResult, { color: Number(account?.daily_pnl ?? 0) >= 0 ? (isLight ? "#28734F" : C.green) : C.red }]}>{account ? money(account.daily_pnl) : "—"}</Text></View>
-            <View style={styles.insightLine}><Text style={[styles.insightLabel, isLight && { color: LIGHT.muted }]}>Last synced</Text><Text style={[styles.insightResult, isLight && { color: LIGHT.text }]}>{lastUpdated || "Waiting for data"}</Text></View>
           </View>
           <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Insights use closed-trade history and the latest account snapshot received from your Windows PC.</Text>
+        </>}
+        {tab === "notifications" && <>
+          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>ALERT CENTER</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Notifications</Text>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
+            {cardTitle("RECENT NOTIFICATIONS", String(latest.length))}
+            {latest.length === 0 ? <View style={styles.emptyNotifications}><Text style={[styles.emptyNotificationTitle, isLight && { color: LIGHT.text }]}>You're all caught up</Text><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Trading alerts and push notifications will appear here when received by this phone.</Text></View> : latest.map((item, index) => <View key={item.receivedAt + "-" + index} style={[styles.notificationRow, isLight && { borderTopColor: LIGHT.line }]}>
+              <View style={[styles.notificationMark, { backgroundColor: isLight ? LIGHT.panel2 : C.panel2 }]}><Text style={{ color: isLight ? LIGHT.gold : C.green, fontSize: 16 }}>●</Text></View>
+              <View style={{ flex: 1 }}><Text style={[styles.notificationTitle, isLight && { color: LIGHT.text }]}>{item.title}</Text>{item.body ? <Text style={[styles.notificationBody, isLight && { color: LIGHT.muted }]}>{item.body}</Text> : null}<Text style={[styles.notificationTime, isLight && { color: LIGHT.muted }]}>{item.receivedAt}</Text></View>
+            </View>)}
+          </View>
         </>}
         {tab === "settings" && <>
           <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>PERSONALIZE YOUR APP</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Settings</Text>
@@ -374,7 +384,7 @@ export default function App() {
 
       <View style={[styles.tabbar, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
         {([
-          ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "◒", "INSIGHTS"], ["settings", "⚙", "SETTINGS"]
+          ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "◒", "INSIGHTS"], ["notifications", "♧", "NOTIFICATIONS"], ["settings", "⚙", "SETTINGS"]
         ] as const).map(([key, icon, label]) => <Pressable key={key} onPress={() => setTab(key)} style={styles.tabItem}><Text style={[styles.tabIcon, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{icon}</Text><Text style={[styles.tabLabel, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{label}</Text>{tab === key ? <View style={styles.tabIndicator} /> : null}</Pressable>)}
       </View>
       {actionBusy ? <View style={styles.busyOverlay}><ActivityIndicator color={C.green} /><Text style={styles.busyText}>Communicating with Windows PC…</Text></View> : null}
@@ -395,6 +405,13 @@ const styles = StyleSheet.create({
   topStatus: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.7 },
   themeToggle: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: "#59451D", backgroundColor: "#17130A", alignItems: "center", justifyContent: "center" },
   themeToggleText: { color: "#E8BD53", fontSize: 19, fontWeight: "800" },
+  emptyNotifications: { paddingVertical: 24, alignItems: "center", gap: 8 },
+  emptyNotificationTitle: { color: C.text, fontSize: 15, fontWeight: "800" },
+  notificationRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: C.line },
+  notificationMark: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  notificationTitle: { color: C.text, fontSize: 13, fontWeight: "800" },
+  notificationBody: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  notificationTime: { color: C.muted, fontSize: 10, marginTop: 6 },
   page: { padding: 18, paddingBottom: 124, gap: 16 },
   greetingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 2 },
   eyebrow: { color: "#D8AF46", fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginBottom: 7 },
