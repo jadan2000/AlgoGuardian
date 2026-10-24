@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, RefreshControl,
+  ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Platform, Pressable, RefreshControl,
   SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View
 } from "react-native";
 import * as Notifications from "expo-notifications";
@@ -14,7 +14,7 @@ Notifications.setNotificationHandler({
   })
 });
 
-type AlertItem = { title: string; body: string; receivedAt: string };
+type AlertItem = { id: string; title: string; body: string; receivedAt: string };\nconst NOTIFICATIONS_KEY = "algoguardian_notification_history";
 type Position = {
   ticket?: number | string; position_ticket?: number | string; position_id?: number | string;
   symbol?: string; type?: string; volume?: number; entry_price?: number; current_price?: number;
@@ -112,15 +112,41 @@ export default function App() {
     void setup().catch((error: unknown) => {
       if (mounted) setPermission("Notification setup issue: " + (error instanceof Error ? error.message : "unknown error"));
     });
-    const received = Notifications.addNotificationReceivedListener(notification => {
+    const saveNotification = (item: AlertItem) => {
+      setLatest(items => {
+        if (items.some(existing => existing.id === item.id)) return items;
+        const next = [item, ...items].slice(0, 50);
+        void SecureStore.setItemAsync(NOTIFICATIONS_KEY, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+    };
+    const toItem = (notification: Notifications.Notification): AlertItem => {
       const content = notification.request.content;
-      setLatest(items => [{ title: content.title ?? "AlgoGuardian alert", body: content.body ?? "", receivedAt: new Date().toLocaleString() }, ...items].slice(0, 50));
+      return { id: notification.request.identifier, title: content.title ?? "AlgoGuardian alert", body: content.body ?? "", receivedAt: new Date(notification.date).toLocaleString() };
+    };
+    const syncNotificationHistory = async () => {
+      try {
+        const saved = await SecureStore.getItemAsync(NOTIFICATIONS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setLatest(items => {
+            const merged = [...items, ...parsed.filter((item: AlertItem) => item && typeof item.id === "string")];
+            return merged.filter((item, index) => merged.findIndex(other => other.id === item.id) === index).slice(0, 50);
+          });
+        }
+        const presented = await Notifications.getPresentedNotificationsAsync();
+        presented.forEach(notification => saveNotification(toItem(notification)));
+        const lastResponse = await Notifications.getLastNotificationResponseAsync();
+        if (lastResponse) saveNotification(toItem(lastResponse.notification));
+      } catch { /* Keep the notification page usable if local history cannot be read. */ }
+    };
+    void syncNotificationHistory();
+    const received = Notifications.addNotificationReceivedListener(notification => saveNotification(toItem(notification)));
+    const response = Notifications.addNotificationResponseReceivedListener(event => saveNotification(toItem(event.notification)));
+    const appState = AppState.addEventListener("change", state => {
+      if (state === "active") void syncNotificationHistory();
     });
-    const response = Notifications.addNotificationResponseReceivedListener(event => {
-      const content = event.notification.request.content;
-      setLatest(items => [{ title: content.title ?? "AlgoGuardian alert", body: content.body ?? "", receivedAt: new Date().toLocaleString() }, ...items].slice(0, 50));
-    });
-    return () => { mounted = false; received.remove(); response.remove(); };
+    return () => { mounted = false; received.remove(); response.remove(); appState.remove(); };
   }, []);
 
   const refreshDashboard = useCallback(async (quiet = false) => {
@@ -384,7 +410,7 @@ export default function App() {
 
       <View style={[styles.tabbar, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
         {([
-          ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "◒", "INSIGHTS"], ["notifications", "♧", "NOTIFICATIONS"], ["settings", "⚙", "SETTINGS"]
+          ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "◒", "INSIGHTS"], ["notifications", "♧", "NOTIFY"], ["settings", "⚙", "SETTINGS"]
         ] as const).map(([key, icon, label]) => <Pressable key={key} onPress={() => setTab(key)} style={styles.tabItem}><Text style={[styles.tabIcon, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{icon}</Text><Text style={[styles.tabLabel, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{label}</Text>{tab === key ? <View style={styles.tabIndicator} /> : null}</Pressable>)}
       </View>
       {actionBusy ? <View style={styles.busyOverlay}><ActivityIndicator color={C.green} /><Text style={styles.busyText}>Communicating with Windows PC…</Text></View> : null}
@@ -494,10 +520,10 @@ const styles = StyleSheet.create({
   alertBody: { color: "#B5C1D2", fontSize: 12, lineHeight: 18, marginTop: 4 },
   alertTime: { color: "#6F8098", fontSize: 9, marginTop: 6 },
   status: { color: C.text, fontSize: 14, fontWeight: "700" },
-  tabbar: { position: "absolute", left: 18, right: 18, bottom: Platform.OS === "android" ? 14 : 20, flexDirection: "row", alignItems: "center", backgroundColor: "#15120B", borderColor: "#5A451D", borderWidth: 1, borderRadius: 30, paddingHorizontal: 7, paddingTop: 8, paddingBottom: Platform.OS === "android" ? 8 : 7, minHeight: 66, elevation: 12, shadowColor: "#000000", shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  tabbar: { position: "absolute", left: 8, right: 8, bottom: Platform.OS === "android" ? 14 : 20, flexDirection: "row", alignItems: "center", backgroundColor: "#15120B", borderColor: "#5A451D", borderWidth: 1, borderRadius: 30, paddingHorizontal: 3, paddingTop: 8, paddingBottom: Platform.OS === "android" ? 8 : 7, minHeight: 66, elevation: 12, shadowColor: "#000000", shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 5, borderRadius: 24 },
   tabIcon: { fontSize: 19, lineHeight: 23 },
-  tabLabel: { fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
+  tabLabel: { fontSize: 7, fontWeight: "900", letterSpacing: 0.25, textAlign: "center", includeFontPadding: false },
   tabIndicator: { position: "absolute", top: 0, width: 18, height: 2, borderRadius: 2, backgroundColor: "#E8BD53" },
   busyOverlay: { position: "absolute", left: 0, right: 0, bottom: 60, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#172333", padding: 12, borderTopColor: C.line, borderTopWidth: 1 },
   busyText: { color: C.text, fontSize: 11, fontWeight: "700" }
