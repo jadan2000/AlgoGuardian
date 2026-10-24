@@ -39,6 +39,7 @@ const URL_KEY = "algoguardian_notification_relay_url";
 const INSTALLATION_KEY = "algoguardian_notification_installation_id";
 const PHONE_SECRET_KEY = "algoguardian_phone_access_secret";
 const C = { bg: "#080807", panel: "#11100D", panel2: "#19160F", line: "#332B19", green: "#E8BD53", text: "#F7F2E6", muted: "#A49A84", red: "#FF7777", amber: "#E8BD53" };
+const LIGHT = { bg: "#F5F3ED", panel: "#FFFFFF", panel2: "#F0ECE1", line: "#DED7C8", text: "#242117", muted: "#746D5D", gold: "#9A7015", top: "#FBF9F3" };
 
 function money(value?: number | string, currency = "USD") {
   const number = typeof value === "string" ? Number(value.replace(/[$,]/g, "")) : Number(value ?? 0);
@@ -69,6 +70,7 @@ export default function App() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [latest, setLatest] = useState<AlertItem[]>([]);
   const [tab, setTab] = useState<"home" | "trades" | "alerts" | "settings">("home");
+  const [isLight, setIsLight] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [bot, setBot] = useState<BotStatus | null>(null);
   const [trades, setTrades] = useState<HistoryTrade[]>([]);
@@ -246,34 +248,34 @@ export default function App() {
   const positions = account?.trade_activity ?? [];
 
   const metric = (label: string, value: string, sub?: string, positive?: boolean) => (
-    <View style={styles.metric} key={label}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text numberOfLines={1} adjustsFontSizeToFit style={styles.metricValue}>{value}</Text>
+    <View style={[styles.metric, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]} key={label}>
+      <Text style={[styles.metricLabel, isLight && { color: LIGHT.muted }]}>{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.metricValue, isLight && { color: LIGHT.text }]}>{value}</Text>
       {sub ? <Text style={[styles.metricSub, positive === undefined ? null : { color: positive ? C.green : C.red }]}>{sub}</Text> : null}
     </View>
   );
 
   const cardTitle = (title: string, trailing?: string) => (
-    <View style={styles.cardHeading}><Text style={styles.cardTitle}>{title}</Text>{trailing ? <Text style={styles.cardTrailing}>{trailing}</Text> : null}</View>
+    <View style={[styles.cardHeading, isLight && { color: LIGHT.text }]}><Text style={styles.cardTitle}>{title}</Text>{trailing ? <Text style={styles.cardTrailing}>{trailing}</Text> : null}</View>
   );
 
   const renderPosition = (trade: Position, index: number) => {
     const ticket = trade.ticket ?? trade.position_ticket ?? trade.position_id ?? index;
     const isBuy = String(trade.type).toUpperCase() === "BUY";
     const profit = Number(trade.profit ?? 0);
-    return <View style={styles.tradeRow} key={String(ticket) + "-" + index}>
+    return <View style={[styles.tradeRow, isLight && { borderTopColor: LIGHT.line }]} key={String(ticket) + "-" + index}>
       <View style={[styles.sidePill, { backgroundColor: isBuy ? "#163D32" : "#42272D" }]}><Text style={{ color: isBuy ? C.green : C.red, fontWeight: "800", fontSize: 10 }}>{isBuy ? "BUY" : "SELL"}</Text></View>
-      <View style={styles.tradeMain}><Text style={styles.tradeSymbol}>{trade.symbol || "—"}</Text><Text style={styles.tradeMeta}>{num(trade.volume, 2)} lots · Entry {num(trade.entry_price, 5)}</Text></View>
+      <View style={styles.tradeMain}><Text style={[styles.tradeSymbol, isLight && { color: LIGHT.text }]}>{trade.symbol || "—"}</Text><Text style={[styles.tradeMeta, isLight && { color: LIGHT.muted }]}>{num(trade.volume, 2)} lots · Entry {num(trade.entry_price, 5)}</Text></View>
       <View style={styles.tradeRight}><Text style={[styles.tradeProfit, { color: profit >= 0 ? C.green : C.red }]}>{money(profit)}</Text></View>
     </View>;
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, isLight && { backgroundColor: LIGHT.bg }]}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
-      <View style={styles.topbar}>
+      <View style={[styles.topbar, isLight && { backgroundColor: LIGHT.top, borderBottomColor: LIGHT.line }]}>
         <View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandMarkHorn} /></View>
-        <View style={{ flex: 1 }}><Text style={styles.brand}>AlgoGuardian</Text><Text style={styles.brandCaption}>PRIVATE TRADING CONSOLE</Text></View>
+        <View style={{ flex: 1 }}><Text style={[styles.brand, isLight && { color: LIGHT.text }]}>AlgoGuardian</Text><Text style={[styles.brandCaption, isLight && { color: LIGHT.gold }]}>PRIVATE TRADING CONSOLE</Text></View>
         <View style={[styles.connectionDot, { backgroundColor: isOnline ? C.green : C.amber }]} />
         <Text style={styles.topStatus}>{isOnline ? "PC ONLINE" : "PC LINK"}</Text>
       </View>
@@ -284,15 +286,15 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
       >
         {tab === "home" && <>
-          <View style={styles.greetingRow}><View><Text style={styles.eyebrow}>YOUR ACCOUNT AT A GLANCE</Text><Text style={styles.pageTitle}>Dashboard</Text></View><Pressable style={styles.refreshButton} onPress={() => void refreshDashboard()}><Text style={styles.refreshText}>{loading ? "SYNCING…" : "↻ REFRESH"}</Text></Pressable></View>
+          <View style={styles.greetingRow}><View><Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>YOUR ACCOUNT AT A GLANCE</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Dashboard</Text></View><Pressable style={styles.refreshButton} onPress={() => void refreshDashboard()}><Text style={styles.refreshText}>{loading ? "SYNCING…" : "↻ REFRESH"}</Text></Pressable></View>
           <View style={[styles.engineBanner, { borderColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#285B47" : C.line }]}>
             <View style={{ flex: 1 }}><Text style={styles.engineCaption}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? C.green : bot?.kill_switch ? C.red : C.text }]}>{engineText}</Text><Text style={styles.engineDetail}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows connection"}</Text></View>
             <View style={[styles.engineIcon, { backgroundColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#163D32" : "#263245" }]}><Text style={{ fontSize: 22, color: bot?.running && !bot?.paused ? C.green : C.muted }}>⌁</Text></View>
           </View>
           {apiError ? <View style={styles.errorBox}><Text style={styles.errorText}>{apiError}</Text><Pressable onPress={() => setTab("settings")}><Text style={styles.errorLink}>OPEN SETTINGS ↗</Text></Pressable></View> : null}
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>ACCOUNT EQUITY</Text>
-            <Text style={styles.balanceValue}>{account ? money(account.equity) : "—"}</Text>
+          <View style={[styles.balanceCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
+            <Text style={[styles.balanceLabel, isLight && { color: LIGHT.muted }]}>ACCOUNT EQUITY</Text>
+            <Text style={[styles.balanceValue, isLight && { color: LIGHT.text }]}>{account ? money(account.equity) : "—"}</Text>
             <View style={styles.balanceDivider} />
             <View style={styles.balanceBottom}><View><Text style={styles.balanceSmallLabel}>BALANCE</Text><Text style={styles.balanceSmallValue}>{account ? money(account.balance) : "—"}</Text></View><View style={{ alignItems: "flex-end" }}><Text style={styles.balanceSmallLabel}>FLOATING P/L</Text><Text style={[styles.balanceSmallValue, { color: Number(account?.profit ?? 0) >= 0 ? C.green : C.red }]}>{account ? money(account.profit) : "—"}</Text></View></View>
           </View>
@@ -302,67 +304,74 @@ export default function App() {
             {metric("FREE MARGIN", account ? money(account.free_margin) : "—", "Available funds")}
             {metric("WIN RATE", account ? num(account.win_rate, 1) + "%" : "—", "Backend statistics")}
           </View>
-          <View style={styles.card}>{cardTitle("ENGINE CONTROLS", "WINDOWS PC")}
-            <Text style={styles.mutedText}>Commands are sent to your configured PC. Starting the engine may result in real trades.</Text>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("ENGINE CONTROLS", "WINDOWS PC")}
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Commands are sent to your configured PC. Starting the engine may result in real trades.</Text>
             <View style={styles.controlRow}>
               <Pressable style={[styles.controlButton, styles.startButton]} onPress={() => runBotAction("start")} disabled={actionBusy}><Text style={styles.startText}>{actionBusy ? "PLEASE WAIT…" : "▶  START"}</Text></Pressable>
-              <Pressable style={styles.controlButton} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={styles.controlText}>Ⅱ  PAUSE</Text></Pressable>
+              <Pressable style={styles.controlButton} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>Ⅱ  PAUSE</Text></Pressable>
             </View>
           </View>
-          <View style={styles.card}>{cardTitle("OPEN POSITIONS", String(positions.length))}
-            {positions.length ? positions.slice(0, 5).map((trade, index) => renderPosition(trade, index)) : <Text style={styles.emptyText}>{account ? "No open positions right now." : "Pair with the Windows installation to see live positions."}</Text>}
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("OPEN POSITIONS", String(positions.length))}
+            {positions.length ? positions.slice(0, 5).map((trade, index) => renderPosition(trade, index)) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>{account ? "No open positions right now." : "Pair with the Windows installation to see live positions."}</Text>}
             {positions.length > 5 ? <Pressable onPress={() => setTab("trades")} style={styles.viewAll}><Text style={styles.viewAllText}>VIEW ALL POSITIONS  →</Text></Pressable> : null}
           </View>
-          <View style={styles.card}>{cardTitle("RECENT ACTIVITY", "LAST 30 DAYS")}
-            {trades.length ? trades.slice(0, 4).map((trade, index) => <View style={styles.activityRow} key={String(trade.position_id ?? trade.ticket ?? index)}><View style={styles.activityIcon}><Text style={{ color: C.green }}>↗</Text></View><View style={{ flex: 1 }}><Text style={styles.tradeSymbol}>{trade.symbol || "Trade"}</Text><Text style={styles.tradeMeta}>{trade.type || "—"} · {trade.close_time ? new Date(trade.close_time).toLocaleDateString() : "Closed trade"}</Text></View><Text style={[styles.tradeProfit, { color: Number(trade.profit ?? 0) >= 0 ? C.green : C.red }]}>{money(trade.profit)}</Text></View>) : <Text style={styles.emptyText}>Closed trades appear here when history is available.</Text>}
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("RECENT ACTIVITY", "LAST 30 DAYS")}
+            {trades.length ? trades.slice(0, 4).map((trade, index) => <View style={styles.activityRow} key={String(trade.position_id ?? trade.ticket ?? index)}><View style={styles.activityIcon}><Text style={{ color: C.green }}>↗</Text></View><View style={{ flex: 1 }}><Text style={[styles.tradeSymbol, isLight && { color: LIGHT.text }]}>{trade.symbol || "Trade"}</Text><Text style={[styles.tradeMeta, isLight && { color: LIGHT.muted }]}>{trade.type || "—"} · {trade.close_time ? new Date(trade.close_time).toLocaleDateString() : "Closed trade"}</Text></View><Text style={[styles.tradeProfit, { color: Number(trade.profit ?? 0) >= 0 ? C.green : C.red }]}>{money(trade.profit)}</Text></View>) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>Closed trades appear here when history is available.</Text>}
           </View>
           <Text style={styles.updatedText}>{lastUpdated ? "Last synced " + lastUpdated + " · auto-refresh 10 sec" : "Pull down to refresh account data"}</Text>
         </>}
 
         {tab === "trades" && <>
-          <Text style={styles.eyebrow}>LIVE MT5 DATA</Text><Text style={styles.pageTitle}>Trades</Text>
+          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>LIVE MT5 DATA</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Trades</Text>
           <View style={styles.metricGrid}>{metric("OPEN", String(positions.length), "Active positions")}{metric("FLOATING P/L", account ? money(account.profit) : "—", "Unrealized", Number(account?.profit ?? 0) >= 0)}</View>
-          <View style={styles.card}>{cardTitle("OPEN POSITIONS", String(positions.length))}
-            {positions.length ? positions.map((trade, index) => renderPosition(trade, index)) : <Text style={styles.emptyText}>No open positions or the Windows installation is offline.</Text>}
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("OPEN POSITIONS", String(positions.length))}
+            {positions.length ? positions.map((trade, index) => renderPosition(trade, index)) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>No open positions or the Windows installation is offline.</Text>}
           </View>
-          <View style={styles.card}>{cardTitle("CLOSED TRADES", String(trades.length))}
-            {trades.length ? trades.slice(0, 50).map((trade, index) => <View style={styles.tradeRow} key={String(trade.position_id ?? trade.ticket ?? index)}><View style={[styles.sidePill, { backgroundColor: String(trade.type).toUpperCase() === "BUY" ? "#163D32" : "#42272D" }]}><Text style={{ color: String(trade.type).toUpperCase() === "BUY" ? C.green : C.red, fontWeight: "800", fontSize: 10 }}>{trade.type || "TRADE"}</Text></View><View style={styles.tradeMain}><Text style={styles.tradeSymbol}>{trade.symbol || "—"}</Text><Text style={styles.tradeMeta}>{trade.close_time ? new Date(trade.close_time).toLocaleString() : "Closed"} · {num(trade.volume)} lots</Text></View><Text style={[styles.tradeProfit, { color: Number(trade.profit ?? 0) >= 0 ? C.green : C.red }]}>{money(trade.profit)}</Text></View>) : <Text style={styles.emptyText}>No closed trades returned by the backend.</Text>}
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("CLOSED TRADES", String(trades.length))}
+            {trades.length ? trades.slice(0, 50).map((trade, index) => <View style={[styles.tradeRow, isLight && { borderTopColor: LIGHT.line }]} key={String(trade.position_id ?? trade.ticket ?? index)}><View style={[styles.sidePill, { backgroundColor: String(trade.type).toUpperCase() === "BUY" ? "#163D32" : "#42272D" }]}><Text style={{ color: String(trade.type).toUpperCase() === "BUY" ? C.green : C.red, fontWeight: "800", fontSize: 10 }}>{trade.type || "TRADE"}</Text></View><View style={styles.tradeMain}><Text style={[styles.tradeSymbol, isLight && { color: LIGHT.text }]}>{trade.symbol || "—"}</Text><Text style={[styles.tradeMeta, isLight && { color: LIGHT.muted }]}>{trade.close_time ? new Date(trade.close_time).toLocaleString() : "Closed"} · {num(trade.volume)} lots</Text></View><Text style={[styles.tradeProfit, { color: Number(trade.profit ?? 0) >= 0 ? C.green : C.red }]}>{money(trade.profit)}</Text></View>) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>No closed trades returned by the backend.</Text>}
           </View>
         </>}
 
         {tab === "alerts" && <>
-          <Text style={styles.eyebrow}>ENGINE EVENTS</Text><Text style={styles.pageTitle}>Alerts</Text>
-          <View style={styles.card}>{cardTitle("PUSH STATUS")}<Text style={styles.status}>{permission}</Text><Text style={styles.mutedText}>Push notifications arrive through Firebase when your Windows installation sends supported engine or trade events.</Text><View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId ? C.green : C.amber }]} /><Text style={styles.mutedText}>{installationId ? "Phone paired" : "Phone not paired"}</Text></View><Pressable style={styles.secondaryButton} onPress={() => setTab("settings")}><Text style={styles.controlText}>PAIRING & SETTINGS</Text></Pressable></View>
-          <View style={styles.card}>{cardTitle("RECENT ALERTS", String(latest.length))}
-            {latest.length ? latest.map((item, index) => <View style={styles.alertRow} key={item.receivedAt + index}><View style={styles.alertIcon}><Text style={{ color: C.green }}>↯</Text></View><View style={{ flex: 1 }}><Text style={styles.alertTitle}>{item.title}</Text><Text style={styles.alertBody}>{item.body}</Text><Text style={styles.alertTime}>{item.receivedAt}</Text></View></View>) : <Text style={styles.emptyText}>No alerts received on this phone yet. Pair it with your Windows installation to receive events.</Text>}
+          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>ENGINE EVENTS</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Alerts</Text>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("PUSH STATUS")}<Text style={styles.status}>{permission}</Text><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Push notifications arrive through Firebase when your Windows installation sends supported engine or trade events.</Text><View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId ? C.green : C.amber }]} /><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{installationId ? "Phone paired" : "Phone not paired"}</Text></View><Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => setTab("settings")}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>PAIRING & SETTINGS</Text></Pressable></View>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("RECENT ALERTS", String(latest.length))}
+            {latest.length ? latest.map((item, index) => <View style={styles.alertRow} key={item.receivedAt + index}><View style={styles.alertIcon}><Text style={{ color: C.green }}>↯</Text></View><View style={{ flex: 1 }}><Text style={styles.alertTitle}>{item.title}</Text><Text style={styles.alertBody}>{item.body}</Text><Text style={styles.alertTime}>{item.receivedAt}</Text></View></View>) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>No alerts received on this phone yet. Pair it with your Windows installation to receive events.</Text>}
           </View>
         </>}
 
         {tab === "settings" && <>
-          <Text style={styles.eyebrow}>SECURE REMOTE CONNECTION</Text><Text style={styles.pageTitle}>Settings</Text>
-          <View style={styles.card}>{cardTitle("REMOTE WINDOWS CONNECTION")}
-            <Text style={styles.mutedText}>Pair this phone using the one-time QR code on your Windows dashboard. Account snapshots and start/pause requests travel through the HTTPS relay, so your phone and PC can use different networks. No public PC port or local IP is needed.</Text>
-            <View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId && phoneSecret ? C.green : C.amber }]} /><Text style={styles.mutedText}>{installationId && phoneSecret ? "Remote phone access paired" : "Not paired"}</Text></View>
-            <Pressable style={styles.secondaryButton} onPress={() => void refreshDashboard()}><Text style={styles.controlText}>TEST RELAY / REFRESH</Text></Pressable>
-            {apiError ? <Text style={styles.errorText}>{apiError}</Text> : null}
-            <Text style={styles.mutedText}>{lastUpdated ? "Last snapshot: " + lastUpdated : "No snapshot received yet."}</Text>
+          <Text style={[styles.eyebrow, isLight && { color: LIGHT.gold }]}>SECURE REMOTE CONNECTION</Text><Text style={[styles.pageTitle, isLight && { color: LIGHT.text }]}>Settings</Text>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
+            {cardTitle("APPEARANCE")}
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Choose your preferred app appearance.</Text>
+            <Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => { const next = !isLight; setIsLight(next); void SecureStore.setItemAsync("algoguardian_theme", next ? "light" : "dark"); }}>
+              <Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>{isLight ? "☀  LIGHT MODE · ACTIVE" : "☾  SWITCH TO LIGHT MODE"}</Text>
+            </Pressable>
           </View>
-          <View style={styles.card}>{cardTitle("PHONE PUSH PAIRING")}
-            <Text style={styles.mutedText}>Scan the one-time QR code generated in the Windows dashboard under Broker Accounts. Push notifications require a physical Android phone and a native development/production build, not Expo Go.</Text>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("REMOTE WINDOWS CONNECTION")}
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Pair this phone using the one-time QR code on your Windows dashboard. Account snapshots and start/pause requests travel through the HTTPS relay, so your phone and PC can use different networks. No public PC port or local IP is needed.</Text>
+            <View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId && phoneSecret ? C.green : C.amber }]} /><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{installationId && phoneSecret ? "Remote phone access paired" : "Not paired"}</Text></View>
+            <Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => void refreshDashboard()}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>TEST RELAY / REFRESH</Text></Pressable>
+            {apiError ? <Text style={styles.errorText}>{apiError}</Text> : null}
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>{lastUpdated ? "Last snapshot: " + lastUpdated : "No snapshot received yet."}</Text>
+          </View>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("PHONE PUSH PAIRING")}
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Scan the one-time QR code generated in the Windows dashboard under Broker Accounts. Push notifications require a physical Android phone and a native development/production build, not Expo Go.</Text>
             <Text style={[styles.registration, { color: installationId ? C.green : C.amber }]}>{installationId ? "PAIRED · " + registration : registration}</Text>
             <Pressable style={[styles.primaryButton, (!fcmToken || busy) && styles.disabledButton]} onPress={() => void openScanner()} disabled={!fcmToken || busy}><Text style={styles.primaryButtonText}>{busy ? "PLEASE WAIT…" : "SCAN PAIRING QR CODE"}</Text></Pressable>
-            {showScanner && <View style={styles.scanner}><CameraView style={styles.camera} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={scanned ? undefined : handleBarcodeScanned} /><Text style={styles.mutedText}>Point your camera at the one-time QR code on the Windows dashboard.</Text><Pressable style={styles.secondaryButton} onPress={() => setShowScanner(false)}><Text style={styles.controlText}>CANCEL SCAN</Text></Pressable></View>}
-            <Pressable style={styles.secondaryButton} onPress={() => void unpairDevice()} disabled={busy}><Text style={styles.controlText}>UNPAIR THIS PHONE</Text></Pressable>
-            <Text style={styles.mutedText}>Notification permission: {permission}</Text>
+            {showScanner && <View style={styles.scanner}><CameraView style={styles.camera} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={scanned ? undefined : handleBarcodeScanned} /><Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Point your camera at the one-time QR code on the Windows dashboard.</Text><Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => setShowScanner(false)}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>CANCEL SCAN</Text></Pressable></View>}
+            <Pressable style={[styles.secondaryButton, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]} onPress={() => void unpairDevice()} disabled={busy}><Text style={[styles.controlText, isLight && { color: LIGHT.text }]}>UNPAIR THIS PHONE</Text></Pressable>
+            <Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Notification permission: {permission}</Text>
           </View>
-          <View style={styles.card}>{cardTitle("SECURITY & ARCHITECTURE")}<Text style={styles.mutedText}>Trading and MT5 remain on your Windows PC. This mobile app sends requests to that PC and receives push alerts; the notification relay does not execute trades. Remote commands are accepted only through the relay and limited to engine start/pause. Public release still requires end-to-end security and isolation testing.</Text></View>
+          <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("SECURITY & ARCHITECTURE")}<Text style={[styles.mutedText, isLight && { color: LIGHT.muted }]}>Trading and MT5 remain on your Windows PC. This mobile app sends requests to that PC and receives push alerts; the notification relay does not execute trades. Remote commands are accepted only through the relay and limited to engine start/pause. Public release still requires end-to-end security and isolation testing.</Text></View>
         </>}
       </ScrollView>
 
-      <View style={styles.tabbar}>
+      <View style={[styles.tabbar, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
         {([
           ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "♧", "ALERTS"], ["settings", "⚙", "SETTINGS"]
-        ] as const).map(([key, icon, label]) => <Pressable key={key} onPress={() => setTab(key)} style={styles.tabItem}><Text style={[styles.tabIcon, { color: tab === key ? C.green : C.muted }]}>{icon}</Text><Text style={[styles.tabLabel, { color: tab === key ? C.green : C.muted }]}>{label}</Text>{tab === key ? <View style={styles.tabIndicator} /> : null}</Pressable>)}
+        ] as const).map(([key, icon, label]) => <Pressable key={key} onPress={() => setTab(key)} style={styles.tabItem}><Text style={[styles.tabIcon, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{icon}</Text><Text style={[styles.tabLabel, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{label}</Text>{tab === key ? <View style={styles.tabIndicator} /> : null}</Pressable>)}
       </View>
       {actionBusy ? <View style={styles.busyOverlay}><ActivityIndicator color={C.green} /><Text style={styles.busyText}>Communicating with Windows PC…</Text></View> : null}
     </SafeAreaView>
