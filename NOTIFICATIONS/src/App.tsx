@@ -331,7 +331,9 @@ export default function App() {
             {positions.length ? positions.map((trade, index) => renderPosition(trade, index)) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>No open positions or the Windows installation is offline.</Text>}
           </View>
           <View style={[styles.card, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>{cardTitle("CLOSED TRADES", String(trades.length))}
-            {trades.length ? trades.slice(0, 50).map((trade, index) => <View style={[styles.tradeRow, isLight && { borderTopColor: LIGHT.line }]} key={String(trade.position_id ?? trade.ticket ?? index)}><View style={[styles.sidePill, { backgroundColor: String(trade.type).toUpperCase() === "BUY" ? "#163D32" : "#42272D" }]}><Text style={{ color: String(trade.type).toUpperCase() === "BUY" ? C.green : C.red, fontWeight: "800", fontSize: 10 }}>{trade.type || "TRADE"}</Text></View><View style={styles.tradeMain}><Text style={[styles.tradeSymbol, isLight && { color: LIGHT.text }]}>{trade.symbol || "—"}</Text><Text style={[styles.tradeMeta, isLight && { color: LIGHT.muted }]}>{trade.close_time ? new Date(trade.close_time).toLocaleString() : "Closed"} · {num(trade.volume)} lots</Text></View><Text style={[styles.tradeProfit, { color: Number(trade.profit ?? 0) >= 0 ? C.green : C.red }]}>{money(trade.profit)}</Text></View>) : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>No closed trades returned by the backend.</Text>}
+            {trades.length ? <ScrollView style={styles.closedTradesList} nestedScrollEnabled showsVerticalScrollIndicator>
+              {trades.map((trade, index) => <View style={[styles.tradeRow, isLight && { borderTopColor: LIGHT.line }]} key={String(trade.position_id ?? trade.ticket ?? index)}><View style={[styles.sidePill, { backgroundColor: String(trade.type).toUpperCase() === "BUY" ? (isLight ? "#E0F1E6" : "#163D32") : (isLight ? "#F9E3E4" : "#42272D") }]}><Text style={{ color: String(trade.type).toUpperCase() === "BUY" ? (isLight ? "#28734F" : C.green) : C.red, fontWeight: "800", fontSize: 10 }}>{trade.type || "TRADE"}</Text></View><View style={styles.tradeMain}><Text style={[styles.tradeSymbol, isLight && { color: LIGHT.text }]}>{trade.symbol || "—"}</Text><Text style={[styles.tradeMeta, isLight && { color: LIGHT.muted }]}>{trade.close_time ? new Date(trade.close_time).toLocaleString() : "Closed"} · {num(trade.volume)} lots</Text></View><Text style={[styles.tradeProfit, { color: Number(trade.profit ?? 0) >= 0 ? (isLight ? "#28734F" : C.green) : C.red }]}>{money(trade.profit)}</Text></View>)}
+            </ScrollView> : <Text style={[styles.emptyText, isLight && { color: LIGHT.muted }]}>No closed trades returned by the backend.</Text>}
           </View>
         </>}
 
@@ -425,6 +427,7 @@ const styles = StyleSheet.create({
   controlText: { color: C.text, fontWeight: "800", fontSize: 10, letterSpacing: 0.2 },
   stopButton: { backgroundColor: "#3A2027", borderColor: "#663640" },
   stopText: { color: C.red, fontWeight: "900", fontSize: 10 },
+  closedTradesList: { height: 390 },
   tradeRow: { flexDirection: "row", alignItems: "center", paddingVertical: 11, borderTopColor: "#223044", borderTopWidth: 1, gap: 9 },
   sidePill: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 6 },
   tradeMain: { flex: 1, minWidth: 0 },
