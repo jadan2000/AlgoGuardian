@@ -412,14 +412,7 @@ export function SettingsPanel() {
             </section>
           )}
 
-          {activeSection === 'quality' && (
-            <section className="space-y-4">
-              <h2 className="text-xl font-semibold">Signal Quality</h2>
-              <Card className="p-4 md:p-6 space-y-6">
-                <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>The experiment reviewer can tune quality/filter parameters based on completed paper-trading cycles. Risk limits and maximum open positions remain protected.</AlertDescription></Alert>
-              </Card>
-            </section>
-          )}
+
         </div>
       </div>
     </div>
