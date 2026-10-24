@@ -44,3 +44,5 @@ NOTIFICATIONS/google-services.json
 # Per-installation phone notification registry (contains private FCM device tokens)
 BACKEND/storage/notification_devices.json
 BACKEND/storage/notification_devices.tmp
+BACKEND/storage/notification_identity.json
+BACKEND/storage/notification_identity.tmp
