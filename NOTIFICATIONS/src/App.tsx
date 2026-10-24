@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Platform, Pressable, RefreshControl,
-  SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View
+  ScrollView, StatusBar, StyleSheet, Text, View
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Device from "expo-device";
@@ -355,7 +356,8 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, isLight && { backgroundColor: LIGHT.bg }]}>
+    <SafeAreaProvider>
+    <SafeAreaView edges={["top"]} style={[styles.safe, isLight && { backgroundColor: LIGHT.bg }]}>
       <StatusBar hidden barStyle="dark-content" backgroundColor={LIGHT.bg} />
       <View style={[styles.topbar, isLight && { backgroundColor: LIGHT.top, borderBottomColor: LIGHT.line }]}>
         <View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandMarkHorn} /></View>
@@ -481,6 +483,7 @@ export default function App() {
       </View>
       {actionBusy ? <View style={styles.busyOverlay}><ActivityIndicator color={C.green} /><Text style={styles.busyText}>Communicating with Windows PC…</Text></View> : null}
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -488,7 +491,7 @@ export default function App() {
 const styles = StyleSheet.create({
   brandMarkHorn: { position: "absolute", width: 9, height: 9, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#F3CF68", top: 7, right: 7, transform: [{ rotate: "8deg" }] },
   safe: { flex: 1, backgroundColor: C.bg },
-  topbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 15, borderBottomColor: "#3B3019", borderBottomWidth: 1, gap: 11, backgroundColor: "#0B0A08" },
+  topbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 22, paddingBottom: 15, borderBottomColor: "#3B3019", borderBottomWidth: 1, gap: 11, backgroundColor: "#0B0A08" },
   brandMark: { width: 43, height: 43, borderRadius: 13, backgroundColor: "#0B0A07", borderWidth: 1, borderColor: "#C99A35", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   brandMarkText: { color: "#F3CF68", fontWeight: "900", fontSize: 30, fontStyle: "italic", letterSpacing: -3, marginTop: -3 },
   brand: { color: C.text, fontWeight: "900", fontSize: 17, letterSpacing: -0.3 },
@@ -586,7 +589,7 @@ const styles = StyleSheet.create({
   alertBody: { color: "#B5C1D2", fontSize: 12, lineHeight: 18, marginTop: 4 },
   alertTime: { color: "#6F8098", fontSize: 9, marginTop: 6 },
   status: { color: C.text, fontSize: 14, fontWeight: "700" },
-  tabbar: { position: "absolute", left: 8, right: 8, bottom: Platform.OS === "android" ? 14 : 20, flexDirection: "row", alignItems: "center", backgroundColor: "#15120B", borderColor: "#5A451D", borderWidth: 1, borderRadius: 30, paddingHorizontal: 3, paddingTop: 8, paddingBottom: Platform.OS === "android" ? 8 : 7, minHeight: 66, elevation: 12, shadowColor: "#000000", shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  tabbar: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", backgroundColor: "#15120B", borderColor: "#5A451D", borderWidth: 1, borderBottomWidth: 0, borderRadius: 0, paddingHorizontal: 3, paddingTop: 8, paddingBottom: 0, minHeight: 66, elevation: 12 },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 5, borderRadius: 24 },
   tabIcon: { fontSize: 19, lineHeight: 23 },
   tabLabel: { fontSize: 7, fontWeight: "900", letterSpacing: 0.25, textAlign: "center", includeFontPadding: false },
