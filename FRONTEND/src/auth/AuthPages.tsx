@@ -80,6 +80,8 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(true);
 
   if (loading) return <AuthLayout><div className="text-center text-slate-400">Loading your account…</div></AuthLayout>;
   if (user) return <Navigate to={profile?.activation_status === "active" ? "/" : "/activation"} replace />;
@@ -87,6 +89,10 @@ export function RegisterPage() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    if (!agreementAccepted) {
+      setAgreementOpen(true);
+      return setError("Please read and accept the AlgoGuardian Agreement before creating your account.");
+    }
     if (!supabase) return setError("Authentication is not configured yet. Add the Supabase environment variables to the frontend.");
     if (password !== confirmPassword) return setError("Your passwords do not match.");
     if (password.length < 8) return setError("Use a password with at least 8 characters.");
@@ -107,6 +113,56 @@ export function RegisterPage() {
 
   return (
     <AuthLayout>
+      {agreementOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="agreement-title">
+          <section className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-amber-300/25 bg-slate-950 shadow-2xl shadow-black/50">
+            <header className="border-b border-white/10 px-6 py-5 sm:px-8">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">Please read before continuing</p>
+              <h2 id="agreement-title" className="text-2xl font-semibold tracking-tight text-white">AlgoGuardian Agreement</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">Review these important terms before creating your account.</p>
+            </header>
+            <div className="space-y-5 overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-300 sm:px-8">
+              <section>
+                <h3 className="mb-1 font-semibold text-white">1. Trading risk</h3>
+                <p>Forex and other leveraged trading involve substantial risk and may result in the loss of some or all of your trading capital. Only trade with money you can afford to lose. Past performance, signals, simulations, and examples do not guarantee future results.</p>
+              </section>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">2. Tool, not financial advice</h3>
+                <p>AlgoGuardian provides trading automation and related tools. It does not provide personalised financial, investment, tax, or legal advice, and it does not guarantee profits, trading accuracy, uninterrupted operation, or avoidance of losses. You are responsible for deciding whether trading is suitable for you.</p>
+              </section>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">3. Your account and settings</h3>
+                <p>You are responsible for the accuracy and security of your account details, broker/MT5 account, trading permissions, strategy choices, lot sizes, and risk settings. Review settings carefully and test on a demo account before using real funds. Risk controls may not prevent losses during slippage, gaps, disconnections, execution delays, or market volatility.</p>
+              </section>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">4. Connectivity and availability</h3>
+                <p>Trading tools can be affected by internet interruptions, device or terminal availability, broker conditions, software faults, and third-party services. Do not assume the bot is running or that an order has executed unless you verify the status with your broker. Monitor open positions and maintain a plan for managing risk.</p>
+              </section>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">5. Responsible use</h3>
+                <p>You agree to use AlgoGuardian lawfully, keep your login credentials private, and not misuse, disrupt, or attempt to gain unauthorised access to the service. You remain responsible for complying with applicable laws and your broker’s terms.</p>
+              </section>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">6. Understanding and acceptance</h3>
+                <p>By accepting, you confirm that you have read and understood this agreement, understand the risks of automated trading, and accept responsibility for your trading decisions and account activity. If you do not agree, do not create an account or use the service.</p>
+              </section>
+              <p className="border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">This is a general product agreement and risk notice, not a substitute for legal advice. Have the final terms reviewed for the laws and jurisdictions where AlgoGuardian will be offered.</p>
+            </div>
+            <footer className="border-t border-white/10 bg-white/[0.02] px-6 py-5 sm:px-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex cursor-pointer items-start gap-3 text-sm leading-5 text-slate-200">
+                  <input type="checkbox" checked={agreementAccepted} onChange={event => setAgreementAccepted(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-amber-300" />
+                  <span>I have read and agree to the AlgoGuardian Agreement.</span>
+                </label>
+                <button type="button" disabled={!agreementAccepted} onClick={() => setAgreementOpen(false)} className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-amber-300 px-5 font-semibold text-black transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40">
+                  Continue <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      )}
+      <div className={agreementOpen ? "pointer-events-none select-none blur-[2px]" : ""} aria-hidden={agreementOpen}>
       <div className="mb-7">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">Get started</p>
         <h2 className="text-3xl font-semibold tracking-tight">Create your account</h2>
@@ -128,6 +184,7 @@ export function RegisterPage() {
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-400">Already have an account? <Link to="/login" className="font-semibold text-amber-300 hover:text-amber-200">Sign in</Link></p>
+      </div>
     </AuthLayout>
   );
 }
