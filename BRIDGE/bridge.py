@@ -3,6 +3,7 @@ from __future__ import annotations
 import json, os, subprocess, time
 from pathlib import Path
 from typing import Any
+from urllib.request import Request, urlopen
 import psutil, uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +27,44 @@ def load_config() -> dict[str, Any]:
     return DEFAULTS.copy()
 
 config = load_config()
+_last_broker_connected: bool | None = None
+
+
+def send_phone_alert(event: str, message: str) -> None:
+    """Send an optional phone alert through the separately configured relay."""
+    relay_url = str(config.get("notification_relay_url", "")).strip().rstrip("/")
+    relay_key = str(config.get("notification_relay_api_key", "")).strip()
+    device_token = str(config.get("notification_device_token", "")).strip()
+    if not (relay_url and relay_key and device_token):
+        return
+    payload = json.dumps({"deviceToken": device_token, "event": event, "message": message}).encode("utf-8")
+    request = Request(
+        relay_url + "/v1/notify",
+        data=payload,
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + relay_key},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=3) as response:
+            if response.status >= 300:
+                print("Phone alert relay returned HTTP", response.status)
+    except Exception as exc:
+        # Notification failures must never take down bridge status or MT5 checks.
+        print("Phone alert could not be delivered:", type(exc).__name__)
+
+
+def notify_connection_change(connected: bool) -> None:
+    global _last_broker_connected
+    previous = _last_broker_connected
+    _last_broker_connected = connected
+    if previous is None or previous == connected:
+        return
+    if connected:
+        send_phone_alert("mt5_reconnected", "Your MT5 broker connection is available again.")
+    else:
+        send_phone_alert("mt5_disconnected", "Your MT5 broker connection was lost. Check MT5 on your laptop.")
+
+
 app = FastAPI(title="AlgoGuardian Local Bridge", version="0.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=[str(config["dashboard_origin"])], allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type"])
 
