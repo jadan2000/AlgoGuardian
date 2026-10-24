@@ -37,7 +37,6 @@ type HistoryTrade = {
 
 const URL_KEY = "algoguardian_notification_relay_url";
 const INSTALLATION_KEY = "algoguardian_notification_installation_id";
-const API_KEY = "algoguardian_windows_api_url";
 const C = { bg: "#080D15", panel: "#111A27", panel2: "#162232", line: "#253448", green: "#8FE0B7", text: "#F1F5FC", muted: "#91A1B8", red: "#FF7777", amber: "#E9BE72" };
 
 function money(value?: number | string, currency = "USD") {
@@ -67,8 +66,6 @@ export default function App() {
   const [scanned, setScanned] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [latest, setLatest] = useState<AlertItem[]>([]);
-  const [apiUrl, setApiUrl] = useState("");
-  const [apiDraft, setApiDraft] = useState("");
   const [tab, setTab] = useState<"home" | "trades" | "alerts" | "settings">("home");
   const [account, setAccount] = useState<Account | null>(null);
   const [bot, setBot] = useState<BotStatus | null>(null);
@@ -82,8 +79,8 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
     const setup = async () => {
-      const [savedRelay, savedInstallation, savedApi] = await Promise.all([
-        SecureStore.getItemAsync(URL_KEY), SecureStore.getItemAsync(INSTALLATION_KEY), SecureStore.getItemAsync(API_KEY)
+      const [savedRelay, savedInstallation, savedPhoneSecret] = await Promise.all([
+        SecureStore.getItemAsync(URL_KEY), SecureStore.getItemAsync(INSTALLATION_KEY), SecureStore.getItemAsync(PHONE_SECRET_KEY)
       ]);
       if (mounted) {
         if (savedRelay) setRelayUrl(savedRelay);
@@ -255,7 +252,7 @@ export default function App() {
     <View style={styles.cardHeading}><Text style={styles.cardTitle}>{title}</Text>{trailing ? <Text style={styles.cardTrailing}>{trailing}</Text> : null}</View>
   );
 
-  const renderPosition = (trade: Position, index: number, closable = true) => {
+  const renderPosition = (trade: Position, index: number) => {
     const ticket = trade.ticket ?? trade.position_ticket ?? trade.position_id ?? index;
     const isBuy = String(trade.type).toUpperCase() === "BUY";
     const profit = Number(trade.profit ?? 0);
