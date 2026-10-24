@@ -142,6 +142,7 @@ export default function App() {
       setTrades(Array.isArray(snapshot.recent_trades) ? snapshot.recent_trades : []);
       setLastUpdated(new Date(seen).toLocaleTimeString());
     } catch (error) {
+      setAccount(null); setBot(null); setTrades([]);
       setApiError(error instanceof Error ? error.message : "Could not retrieve remote account data.");
     } finally { setLoading(false); setRefreshing(false); }
   }, [relayUrl, installationId, phoneSecret]);
