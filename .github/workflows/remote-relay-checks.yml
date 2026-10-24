@@ -32,3 +32,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m compileall -q BACKEND
+
+  edge-function-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check SUPABASE-NOTIFICATIONS/supabase/functions/notification-relay/index.ts
