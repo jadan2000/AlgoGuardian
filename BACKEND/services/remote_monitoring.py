@@ -85,8 +85,12 @@ def _execute_command(command):
 
 def _loop():
     while not _STOP.is_set():
+        # Snapshot failures must not prevent the worker from receiving a pause command.
         try:
             relay_post("/v1/snapshot/publish", {"snapshot": _snapshot()})
+        except Exception:
+            pass
+        try:
             result = relay_post("/v1/commands/poll", {})
             for command in result.get("commands", []):
                 command_id = command.get("id")
@@ -104,7 +108,7 @@ def _loop():
                     except NotificationRelayError:
                         pass
         except Exception:
-            # A relay outage must not crash the local trading engine.
+            # Relay failure must never crash or stop the local trading engine.
             pass
         _STOP.wait(5)
 
