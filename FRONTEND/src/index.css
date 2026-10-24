@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,195 +6,121 @@
 
 @layer base {
   :root {
-    --background: 220 20% 96%;
-    --foreground: 220 15% 10%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 10%;
-
-    --primary: 210 100% 45%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 15% 90%;
-    --secondary-foreground: 220 15% 20%;
-
-    --muted: 220 15% 92%;
-    --muted-foreground: 215 15% 45%;
-
-    --accent: 210 100% 45%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 14 100% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 210 100% 45%;
-
-    --radius: 0.75rem;
-
-    --trading-green: 145 100% 32%;
-    --trading-red: 14 100% 45%;
-    --trading-yellow: 45 100% 42%;
-
-    --card-glow: 0 0 20px hsl(210 100% 45% / 0.06);
-    --card-glow-green: 0 0 16px hsl(145 100% 32% / 0.08);
-    --card-glow-red: 0 0 16px hsl(14 100% 45% / 0.08);
-
-    --sidebar-background: 220 15% 97%;
-    --sidebar-foreground: 220 15% 20%;
-    --sidebar-primary: 210 100% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 92%;
-    --sidebar-accent-foreground: 220 15% 20%;
-    --sidebar-border: 220 15% 88%;
-    --sidebar-ring: 210 100% 45%;
-
+    --background: 0 0% 4%;
+    --foreground: 42 18% 92%;
+    --card: 0 0% 7%;
+    --card-foreground: 42 18% 92%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 42 18% 92%;
+    --primary: 43 92% 56%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 42 18% 90%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 58%;
+    --accent: 43 92% 56%;
+    --accent-foreground: 0 0% 5%;
+    --destructive: 0 76% 54%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 43 92% 56%;
+    --radius: 0.9rem;
+    --trading-green: 145 62% 47%;
+    --trading-red: 2 76% 62%;
+    --trading-yellow: 43 92% 56%;
+    --card-glow: 0 10px 35px hsl(0 0% 0% / .18);
+    --card-glow-green: 0 10px 35px hsl(145 62% 47% / .06);
+    --card-glow-red: 0 10px 35px hsl(2 76% 62% / .06);
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 78%;
+    --sidebar-primary: 43 92% 56%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 43 80% 70%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 43 92% 56%;
     --font-mono: 'JetBrains Mono', monospace;
-    --font-sans: 'Inter', sans-serif;
+    --font-sans: 'DM Sans', sans-serif;
   }
-
   .dark {
-    --background: 220 15% 6%;
-    --foreground: 210 20% 90%;
-
-    --card: 220 15% 10%;
-    --card-foreground: 210 20% 90%;
-
-    --popover: 220 15% 10%;
-    --popover-foreground: 210 20% 90%;
-
-    --primary: 210 100% 50%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 15% 16%;
-    --secondary-foreground: 210 20% 85%;
-
-    --muted: 220 15% 14%;
-    --muted-foreground: 215 15% 50%;
-
-    --accent: 210 100% 50%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 14 100% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 210 100% 50%;
-
-    --trading-green: 145 100% 39%;
-    --trading-red: 14 100% 50%;
-    --trading-yellow: 45 100% 50%;
-
-    --card-glow: 0 0 20px hsl(210 100% 50% / 0.08);
-    --card-glow-green: 0 0 16px hsl(145 100% 39% / 0.12);
-    --card-glow-red: 0 0 16px hsl(14 100% 50% / 0.12);
-
-    --sidebar-background: 220 15% 8%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 14%;
-    --sidebar-accent-foreground: 210 20% 85%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 210 100% 50%;
+    --background: 0 0% 4%;
+    --foreground: 42 18% 92%;
+    --card: 0 0% 7%;
+    --card-foreground: 42 18% 92%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 42 18% 92%;
+    --primary: 43 92% 56%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 42 18% 90%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 58%;
+    --accent: 43 92% 56%;
+    --accent-foreground: 0 0% 5%;
+    --destructive: 0 76% 54%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 43 92% 56%;
+    --trading-green: 145 62% 47%;
+    --trading-red: 2 76% 62%;
+    --trading-yellow: 43 92% 56%;
+    --card-glow: 0 10px 35px hsl(0 0% 0% / .18);
+    --card-glow-green: 0 10px 35px hsl(145 62% 47% / .06);
+    --card-glow-red: 0 10px 35px hsl(2 76% 62% / .06);
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 78%;
+    --sidebar-primary: 43 92% 56%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 43 80% 70%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 43 92% 56%;
   }
 }
-
 @layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: var(--font-sans);
-  }
+  * { @apply border-border; }
+  html { background: #0a0a0a; }
+  body { @apply bg-background text-foreground antialiased; font-family: var(--font-sans); background: #0a0a0a; }
+  button, input, textarea, select { font: inherit; }
+  ::selection { background: hsl(43 92% 56% / .28); color: #fff8df; }
 }
-
 @layer utilities {
-  .font-mono {
-    font-family: var(--font-mono);
-  }
-
-  .text-trading-green {
-    color: hsl(var(--trading-green));
-  }
-
-  .text-trading-red {
-    color: hsl(var(--trading-red));
-  }
-
-  .text-trading-yellow {
-    color: hsl(var(--trading-yellow));
-  }
-
-  .bg-trading-green {
-    background-color: hsl(var(--trading-green));
-  }
-
-  .bg-trading-red {
-    background-color: hsl(var(--trading-red));
-  }
-
-  .bg-trading-green\/10 {
-    background-color: hsl(var(--trading-green) / 0.1);
-  }
-
-  .bg-trading-red\/10 {
-    background-color: hsl(var(--trading-red) / 0.1);
-  }
-
-  .glow-card {
-    box-shadow: var(--card-glow);
-  }
-
-  .glow-green {
-    box-shadow: var(--card-glow-green);
-  }
-
-  .glow-red {
-    box-shadow: var(--card-glow-red);
-  }
-
-  .animate-pulse-subtle {
-    animation: pulse-subtle 3s ease-in-out infinite;
-  }
-
-  @keyframes pulse-subtle {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.85; }
-  }
-
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .animate-fade-in-up {
-    animation: fade-in-up 0.4s ease-out forwards;
-  }
+  .font-mono { font-family: var(--font-mono); }
+  .text-trading-green { color: hsl(var(--trading-green)); }
+  .text-trading-red { color: hsl(var(--trading-red)); }
+  .text-trading-yellow { color: hsl(var(--trading-yellow)); }
+  .bg-trading-green { background-color: hsl(var(--trading-green)); }
+  .bg-trading-red { background-color: hsl(var(--trading-red)); }
+  .bg-trading-green\\/10 { background-color: hsl(var(--trading-green) / .1); }
+  .bg-trading-red\\/10 { background-color: hsl(var(--trading-red) / .1); }
+  .glow-card { box-shadow: var(--card-glow); }
+  .glow-green { box-shadow: var(--card-glow-green); }
+  .glow-red { box-shadow: var(--card-glow-red); }
+  .animate-pulse-subtle { animation: pulse-subtle 3s ease-in-out infinite; }
+  @keyframes pulse-subtle { 0%,100% { opacity: 1; } 50% { opacity: .85; } }
+  @keyframes fade-in-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .animate-fade-in-up { animation: fade-in-up .4s ease-out forwards; }
 }
+#root { min-height: 100%; }
+.page-enter { animation: page-enter-motion 260ms ease-out both; }
+@keyframes page-enter-motion { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-
-/* Smooth entrance transitions between authentication, activation, and dashboard pages. */
-@keyframes page-enter-motion {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.page-enter {
-  animation: page-enter-motion 260ms ease-out both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .page-enter { animation: none; }
-}
+/* Premium dark-metal surfaces, restrained gold accents, and accessible controls. */
+header.sticky { background: rgb(9 9 9 / .88) !important; border-color: rgb(212 175 55 / .18) !important; }
+header.sticky img { border: 1px solid rgb(212 175 55 / .55); box-shadow: 0 0 24px rgb(212 175 55 / .12); }
+header.sticky span.text-2xl, header.sticky span.sm\\:text-3xl { letter-spacing: -.045em; }
+main { background-image: radial-gradient(ellipse at 70% 0%, rgb(194 145 34 / .055), transparent 42%); }
+aside.hidden.md\\:flex { background: linear-gradient(180deg, #0b0b0b, #080808) !important; border-color: rgb(212 175 55 / .15) !important; }
+aside nav button, div.md\\:hidden nav button { border: 1px solid transparent; transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease; }
+aside nav button:hover, div.md\\:hidden nav button:hover { border-color: rgb(212 175 55 / .22); color: #f5d77d; }
+aside nav button.bg-primary, div.md\\:hidden nav button.bg-primary { background: linear-gradient(135deg, #f7d979, #c18b23) !important; color: #15110a !important; border-color: #f4d16c; box-shadow: 0 5px 18px rgb(205 157 46 / .12); }
+main > div, main section, main article { scroll-margin-top: 90px; }
+main .bg-card { background-color: rgb(14 14 14 / .94); }
+main .border-border { border-color: rgb(255 255 255 / .09); }
+main .rounded-lg.border { border-radius: 14px; }
+main .rounded-lg.border.bg-card, main .rounded-xl.border.bg-card { transition: border-color .2s ease, background-color .2s ease; }
+main .rounded-lg.border.bg-card:hover, main .rounded-xl.border.bg-card:hover { border-color: rgb(212 175 55 / .22); }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid #e8bf51; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
