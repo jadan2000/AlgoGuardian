@@ -163,25 +163,44 @@ export default function App() {
             });
           }
         }
+        // Fallback for native notifications that Android presents without a JS
+        // foreground callback: periodically recover anything still in the tray.
         const presented = await Notifications.getPresentedNotificationsAsync();
-        presented.forEach(notification => saveNotification(toItem(notification)));
+        if (presented.length > 0) {
+          presented.forEach(notification => saveNotification(toItem(notification)));
+          setNotificationDebug("Recovered " + presented.length + " presented notification(s) at " + new Date().toLocaleTimeString());
+        }
         const lastResponse = await Notifications.getLastNotificationResponseAsync();
         if (lastResponse) saveNotification(toItem(lastResponse.notification));
-      } catch { /* Keep the notification page usable if local history cannot be read. */ }
+      } catch (error) {
+        setNotificationDebug("Notification read error: " + (error instanceof Error ? error.message : String(error)));
+      }
     };
-    void syncNotificationHistory().then(() => setNotificationDebug("Listener registered; local history checked"));
+    void syncNotificationHistory().then(() => setNotificationDebug(current =>
+      current.startsWith("Recovered ") || current.startsWith("Notification read error:")
+        ? current : "Listener active; checking Android notification tray"
+    ));
     const received = Notifications.addNotificationReceivedListener(notification => {
-      setNotificationDebug("Foreground notification received at " + new Date().toLocaleTimeString());
+      setNotificationDebug("Foreground push received at " + new Date().toLocaleTimeString());
       saveNotification(toItem(notification));
     });
     const response = Notifications.addNotificationResponseReceivedListener(event => {
-      setNotificationDebug("Notification tapped at " + new Date().toLocaleTimeString());
+      setNotificationDebug("Notification opened at " + new Date().toLocaleTimeString());
       saveNotification(toItem(event.notification));
     });
     const appState = AppState.addEventListener("change", state => {
       if (state === "active") void syncNotificationHistory();
     });
-    return () => { mounted = false; received.remove(); response.remove(); appState.remove(); };
+    const recoveryPoll = setInterval(() => {
+      if (AppState.currentState === "active") void syncNotificationHistory();
+    }, 3000);
+    return () => {
+      mounted = false;
+      received.remove();
+      response.remove();
+      appState.remove();
+      clearInterval(recoveryPoll);
+    };
   }, []);
 
   const refreshDashboard = useCallback(async (quiet = false) => {
