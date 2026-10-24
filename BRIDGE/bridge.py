@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 import psutil, uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 try:
@@ -114,8 +115,9 @@ def probe_mt5_connection() -> dict[str, Any]:
 @app.middleware("http")
 async def validate_origin(request: Request, call_next):
     origin = request.headers.get("origin")
-    if origin and origin != str(config["dashboard_origin"]):
-        raise HTTPException(status_code=403, detail="Unapproved dashboard origin.")
+    allowed_origin = str(config["dashboard_origin"]).rstrip("/")
+    if origin and origin.rstrip("/") != allowed_origin:
+        return JSONResponse(status_code=403, content={"detail": "Unapproved dashboard origin."})
     return await call_next(request)
 
 @app.get("/health")
