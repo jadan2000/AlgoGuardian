@@ -14,7 +14,8 @@
     "expo-device": "~7.1.0",
     "expo-secure-store": "~14.2.0",
     "react": "19.0.0",
-    "react-native": "0.79.0"
+    "react-native": "0.79.0",
+    "expo-camera": "~16.1.11"
   },
   "devDependencies": {
     "@types/react": "~19.0.10",
