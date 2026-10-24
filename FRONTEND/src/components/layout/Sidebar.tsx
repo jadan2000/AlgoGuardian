@@ -1,11 +1,10 @@
 import {
   BarChart3,
-  Zap,
   LineChart,
   Settings,
   FileText,
-  UserRound,
   WalletCards,
+  BookOpen,
 } from "lucide-react";
 
 type Props = {
@@ -16,11 +15,11 @@ type Props = {
 export default function Sidebar({ activeTab, setActiveTab }: Props) {
   const items = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "strategies", label: "Strategies", icon: Zap },
     { id: "analytics", label: "Analytics", icon: LineChart },
     { id: "settings", label: "Settings", icon: Settings },
     { id: "logs", label: "Logs", icon: FileText },
     { id: "accounts", label: "Accounts", icon: WalletCards },
+    { id: "how-to-use", label: "How to Use", icon: BookOpen },
   ];
 
   return (
