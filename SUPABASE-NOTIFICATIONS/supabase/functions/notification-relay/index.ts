@@ -147,7 +147,7 @@ Deno.serve(async (request) => {
     } catch { return json({ error: "Unpair relay temporarily unavailable." }, 503); }
   }
   // Phone access uses a separate revocable secret, never the Windows installation secret.
-  if (action === "get_snapshot" || action === "get_notifications" || action === "enqueue_command") {
+  if (action === "get_snapshot" || action === "enqueue_command") {
     if (!validUuid(body.installation_id) || typeof body.phone_secret !== "string" ||
         body.phone_secret.length < 40 || body.phone_secret.length > 256) return json({ error: "Unauthorized phone." }, 401);
     try {
@@ -161,15 +161,6 @@ Deno.serve(async (request) => {
       if (!device) return json({ error: "Phone access was revoked or is invalid." }, 401);
       if (action === "get_snapshot") {
         return json({ snapshot: installation.latest_snapshot, last_seen_at: installation.last_seen_at });
-      }
-      if (action === "get_notifications") {
-        const { data: notifications, error: historyError } = await db.from("installation_notifications")
-          .select("id,event,title,body,created_at")
-          .eq("installation_id", body.installation_id)
-          .order("created_at", { ascending: false })
-          .limit(50);
-        if (historyError) return json({ error: "Could not load notification history." }, 503);
-        return json({ notifications: notifications ?? [] });
       }
       if (body.command !== "start" && body.command !== "pause") return json({ error: "Only start and pause are supported." }, 400);
       const now = new Date().toISOString();
@@ -277,10 +268,6 @@ Deno.serve(async (request) => {
       if (typeof body.event !== "string" || !Object.hasOwn(EVENTS, body.event)) return json({ error: "Unsupported notification event." }, 400);
       const eventTitle = "AlgoGuardian";
       const eventBody = EVENTS[body.event];
-      const { error: historyError } = await auth.db.from("installation_notifications").insert({
-        installation_id: auth.row.installation_id, event: body.event, title: eventTitle, body: eventBody,
-      });
-      if (historyError) return json({ error: "Could not save notification history." }, 503);
       let sent = 0, failed = 0;
       for (const device of tokens) {
         try { await sendPush(device.token, body.event); sent++; } catch { failed++; }
