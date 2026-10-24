@@ -15,7 +15,7 @@ _ACTIONS = {
     "/v1/pairing/create": "create_pairing",
     "/v1/devices/register": "register_device",
     "/v1/devices/remove": "remove_device",
-    "/v1/notifications/send": "send_notification",
+    "/v1/notifications/send": "send_notification",\n    "/v1/snapshot/publish": "publish_snapshot",\n    "/v1/commands/poll": "poll_commands",\n    "/v1/commands/complete": "complete_command",
 }
 
 
