@@ -125,7 +125,7 @@ export function RegisterPage() {
     <AuthLayout>
       {agreementOpen && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/85 px-5 py-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="agreement-title">
-          <section className="my-auto flex h-[calc(100vh-24px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-amber-300/25 bg-slate-950">
+          <section className="my-auto flex h-[calc(100vh-160px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-amber-300/25 bg-slate-950">
             <header className="border-b border-white/10 px-5 py-5">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">Please read before continuing</p>
               <h2 id="agreement-title" className="text-2xl font-semibold tracking-tight text-white">AlgoGuardian Agreement</h2>
