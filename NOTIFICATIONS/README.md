@@ -1,14 +1,14 @@
 # AlgoGuardian Notifications
 
-Android notification-only companion for a customer-owned AlgoGuardian Windows installation. It contains no broker login, broker passwords, trading settings, or order controls.
+Android companion for monitoring a customer-owned AlgoGuardian Windows installation and requesting engine start/pause. It contains no broker login, broker passwords, strategy settings, or individual trade controls.
 
 ## Architecture
 
 - Each customer runs AlgoGuardian, the trading engine, and their own MT5 terminal/account locally on their Windows PC.
 - The Windows backend generates a QR code containing a random, single-use pairing code that expires after three minutes.
-- The phone scans that QR code and sends its FCM token to that Windows backend. The backend consumes the code once, then registers the phone with the notification-only Firebase relay.
+- The phone scans that QR code and claims it through the HTTPS Supabase relay. The relay consumes the code once and returns a per-phone access secret stored in Android SecureStore; the Windows installation secret is never sent to the phone.
 - Every Windows installation has a separate random installation ID and secret stored in `BACKEND/storage/notification_identity.json`. That file is excluded from Git and must never be copied between PCs.
-- Firebase Cloud Messaging transports notifications only. The cloud relay stores each installation's device tokens separately and does not execute trades or receive broker credentials, prices, strategies, or trading commands.
+- The Supabase Edge Function relays generic push notifications, read-only account snapshots, and only two remote commands: engine `start` and `pause`. It does not execute trades or receive broker credentials or strategy settings.
 - The Firebase Admin SDK service-account key stays in Firebase's server-side runtime. It is not installed on customer PCs.
 
 ## Deploy the Firebase notification relay (one-time developer setup)
@@ -48,7 +48,7 @@ The relay uses Firestore's server-side Admin SDK. Its rules explicitly deny clie
 2. Install backend dependencies from `BACKEND/` with `pip install -r requirements.txt`, then restart the local backend.
 3. Sign in to the AlgoGuardian Windows dashboard and open **Broker Accounts**.
 4. Select **Generate pairing QR**. Open the AlgoGuardian phone app on a physical Android phone, grant notification and camera permissions, then scan the QR.
-5. Pair while the phone and PC are on the same trusted local network. The QR code expires after three minutes and can be used once; generate a new one if it expires.
+5. The QR code expires after three minutes and can be used once; generate a new one if it expires. After pairing, phone snapshots and start/pause requests can work across different networks without a public PC port or local IP.
 6. For a native Android build, register the Android app in the same Firebase project, place its `google-services.json` in `NOTIFICATIONS/` (never commit it), then build with the Expo/EAS workflow. Remote push does not work in Expo Go.
 
 ## Event delivery and operational limits
@@ -64,8 +64,8 @@ The branch now includes a notification-only relay and QR pairing implementation,
 
 - Configure and deploy the relay in the intended Firebase project, and test installation registration and notification delivery.
 - Build the Android app with the correct Firebase project and test QR scanning, token rotation, app-closed delivery, and unpairing on a real phone.
-- Secure the local Windows API consistently. Existing bot controls, configuration, trades, logs, and account endpoints still need a full authenticated-route review.
-- Replace the LAN HTTP pairing transport with TLS or another verified secure local pairing transport before public rollout.
+- Review all local Windows API routes for authentication. Remote phone commands bypass public local API access and are accepted only through the relay; the existing local routes still need a full authenticated-route review.
+- Verify the Supabase migrations and Edge Function are deployed, then test cross-network pairing, stale/offline status, phone revocation, command expiry, and two-installation isolation before public rollout.
 - Add durable notification retry/deduplication and robust invalid-token handling.
 - Test two separate Windows installations and two phones; verify there is no cross-installation delivery.
 - Build a Windows installer and verify safe startup, shutdown, recovery, updates, and log rotation.
