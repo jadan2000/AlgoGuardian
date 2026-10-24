@@ -114,12 +114,32 @@ export default function App() {
     void setup().catch((error: unknown) => {
       if (mounted) setPermission("Notification setup issue: " + (error instanceof Error ? error.message : "unknown error"));
     });
+    let notificationWriteQueue: Promise<void> = Promise.resolve();
     const saveNotification = (item: AlertItem) => {
-      setLatest(items => {
-        if (items.some(existing => existing.id === item.id)) return items;
-        const next = [item, ...items].slice(0, 50);
-        void AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(next)).catch(error => console.warn("Could not save local notification history", error));
-        return next;
+      // Serialize writes so a startup history read and a newly received alert
+      // cannot overwrite one another. Keep the history in app-private phone storage.
+      notificationWriteQueue = notificationWriteQueue.then(async () => {
+        const saved = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
+        let stored: AlertItem[] = [];
+        if (saved) {
+          try {
+            const parsed: unknown = JSON.parse(saved);
+            if (Array.isArray(parsed)) stored = parsed.filter((entry): entry is AlertItem =>
+              Boolean(entry) && typeof entry.id === "string" &&
+              typeof entry.title === "string" && typeof entry.receivedAt === "string"
+            );
+          } catch {
+            console.warn("AlgoGuardian notification history was unreadable; starting a fresh local history.");
+          }
+        }
+        const merged = [item, ...stored.filter(existing => existing.id !== item.id)].slice(0, 50);
+        await AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(merged));
+        setLatest(current => {
+          const combined = [...current, ...merged];
+          return combined.filter((entry, index) => combined.findIndex(other => other.id === entry.id) === index).slice(0, 50);
+        });
+      }).catch(error => {
+        console.warn("Could not save AlgoGuardian notification to phone storage", error);
       });
     };
     const toItem = (notification: Notifications.Notification): AlertItem => {
@@ -130,11 +150,17 @@ export default function App() {
       try {
         const saved = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
         if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) setLatest(items => {
-            const merged = [...items, ...parsed.filter((item: AlertItem) => item && typeof item.id === "string")];
-            return merged.filter((item, index) => merged.findIndex(other => other.id === item.id) === index).slice(0, 50);
-          });
+          const parsed: unknown = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.filter((item): item is AlertItem =>
+              Boolean(item) && typeof item.id === "string" &&
+              typeof item.title === "string" && typeof item.receivedAt === "string"
+            );
+            setLatest(items => {
+              const merged = [...items, ...valid];
+              return merged.filter((item, index) => merged.findIndex(other => other.id === item.id) === index).slice(0, 50);
+            });
+          }
         }
         const presented = await Notifications.getPresentedNotificationsAsync();
         presented.forEach(notification => saveNotification(toItem(notification)));
