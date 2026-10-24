@@ -1,7 +1,5 @@
 """Background bridge for read-only account snapshots and engine-only remote commands."""
-import json
 import threading
-import time
 from datetime import datetime, timezone
 
 from services import bot_state
@@ -14,8 +12,10 @@ _THREAD = None
 def _snapshot():
     from api.routes.account import get_account
     from api.routes.bot import get_bot_status
+    from api.routes.trades import list_trades
     account = get_account()
     bot = get_bot_status()
+    recent_trades = list_trades()
     if not isinstance(account, dict) or "error" in account:
         account = None
     if not isinstance(bot, dict):
@@ -24,6 +24,7 @@ def _snapshot():
         "schema_version": 1,
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "account": account,
+        "recent_trades": recent_trades if isinstance(recent_trades, list) else [],
         "engine": {
             "bot": bot.get("bot", "offline"),
             "connected": bool(bot.get("connected", False)),
@@ -46,8 +47,14 @@ def _execute_command(command):
         # Never remotely start without an available MT5 account and local config.
         from engine.mt5_connector import MT5Connector
         from services.config_service import load_config
+        import MetaTrader5 as mt5
         if not MT5Connector().connect():
             raise RuntimeError("MT5 is not connected; start was refused locally.")
+        account = mt5.account_info()
+        if account is None:
+            raise RuntimeError("MT5 account information is unavailable; start was refused locally.")
+        if getattr(account, "trade_allowed", True) is False or getattr(account, "trade_expert", True) is False:
+            raise RuntimeError("MT5 or the broker has disabled automated trading; start was refused locally.")
         config = load_config()
         if not isinstance(config, dict) or not config:
             raise RuntimeError("Local trading configuration is unavailable; start was refused.")
