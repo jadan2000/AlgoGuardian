@@ -123,13 +123,20 @@ Deno.serve(async (request) => {
   }
   if (action === "remove_device_public") {
     if (!validUuid(body.installation_id) || typeof body.token !== "string" ||
-        body.token.length < 20 || body.token.length > 4096) return json({ error: "Invalid unpair request." }, 400);
+        body.token.length < 20 || body.token.length > 4096 ||
+        typeof body.phone_secret !== "string" || body.phone_secret.length < 40 || body.phone_secret.length > 256) {
+      return json({ error: "Invalid unpair request." }, 400);
+    }
     try {
       const db = serviceClient();
       const { data, error } = await db.from("notification_installations").select("device_tokens")
         .eq("installation_id", body.installation_id).maybeSingle();
       if (error || !data) return json({ error: "Installation not found." }, 404);
       const tokens = parseTokens(data.device_tokens);
+      const secretHash = await sha256(body.phone_secret);
+      if (!tokens.some((device) => device.token === body.token && device.phone_secret_hash === secretHash)) {
+        return json({ error: "Phone access was revoked or is invalid." }, 401);
+      }
       const next = tokens.filter((device) => device.token !== body.token);
       const { error: updateError } = await db.from("notification_installations")
         .update({ device_tokens: next, updated_at: new Date().toISOString() })
