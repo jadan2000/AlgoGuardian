@@ -205,7 +205,6 @@ export function SettingsPanel() {
               ['filters', '🧩 Filters'],
               ['execution', '⚡ Execution'],
               ['advanced', '🔧 Advanced'],
-              ['quality', '🎯 Quality'],
             ].map(([value, label]) => (
               <button
                 key={value}
