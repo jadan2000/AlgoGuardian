@@ -53,7 +53,7 @@ function statusLabel(status?: BotStatus | null) {
   if (status.kill_switch) return "EMERGENCY STOP";
   if (status.paused) return "PAUSED";
   if (status.running) return "ENGINE RUNNING";
-  return status.connected ? "ENGINE STOPPED" : "PC OFFLINE";
+  return status.connected ? "ENGINE STOPPED" : "WINDOWS OFFLINE";
 }
 
 export default function App() {
@@ -139,7 +139,7 @@ export default function App() {
       if (!seen || Date.now() - seen > 30000) throw new Error("Windows installation is offline or its data is stale.");
       setAccount(snapshot.account || null);
       setBot(snapshot.engine || null);
-      setTrades(Array.isArray(snapshot.account?.closed_trades) ? snapshot.account.closed_trades : []);
+      setTrades(Array.isArray(snapshot.recent_trades) ? snapshot.recent_trades : []);
       setLastUpdated(new Date(seen).toLocaleTimeString());
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Could not retrieve remote account data.");
@@ -285,7 +285,7 @@ export default function App() {
         {tab === "home" && <>
           <View style={styles.greetingRow}><View><Text style={styles.eyebrow}>YOUR ACCOUNT AT A GLANCE</Text><Text style={styles.pageTitle}>Dashboard</Text></View><Pressable style={styles.refreshButton} onPress={() => void refreshDashboard()}><Text style={styles.refreshText}>{loading ? "SYNCING…" : "↻ REFRESH"}</Text></Pressable></View>
           <View style={[styles.engineBanner, { borderColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#285B47" : C.line }]}>
-            <View style={{ flex: 1 }}><Text style={styles.engineCaption}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? C.green : bot?.kill_switch ? C.red : C.text }]}>{engineText}</Text><Text style={styles.engineDetail}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows PC connection"}</Text></View>
+            <View style={{ flex: 1 }}><Text style={styles.engineCaption}>TRADING ENGINE</Text><Text style={[styles.engineStatus, { color: bot?.running && !bot?.paused && !bot?.kill_switch ? C.green : bot?.kill_switch ? C.red : C.text }]}>{engineText}</Text><Text style={styles.engineDetail}>{bot?.session ? "Session · " + bot.session : "Waiting for Windows connection"}</Text></View>
             <View style={[styles.engineIcon, { backgroundColor: bot?.running && !bot?.paused && !bot?.kill_switch ? "#163D32" : "#263245" }]}><Text style={{ fontSize: 22, color: bot?.running && !bot?.paused ? C.green : C.muted }}>⌁</Text></View>
           </View>
           {apiError ? <View style={styles.errorBox}><Text style={styles.errorText}>{apiError}</Text><Pressable onPress={() => setTab("settings")}><Text style={styles.errorLink}>OPEN SETTINGS ↗</Text></Pressable></View> : null}
