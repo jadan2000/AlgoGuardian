@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "AlgoGuardian Alerts",
+    "slug": "algoguardian-alerts",
+    "scheme": "algoguardian-alerts",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {"package": "com.algoguardian.alerts"},
+    "plugins": ["expo-notifications"]
+  }
+}
