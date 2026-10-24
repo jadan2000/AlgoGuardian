@@ -185,6 +185,37 @@ export default function App() {
     return () => clearInterval(timer);
   }, [relayUrl, installationId, phoneSecret, refreshDashboard]);
 
+  useEffect(() => {
+    if (tab !== "notifications" || !relayUrl || !installationId || !phoneSecret) return;
+    let active = true;
+    const loadHistory = async () => {
+      try {
+        const response = await fetch(relayUrl, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "get_notifications", installation_id: installationId, phone_secret: phoneSecret })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load notification history.");
+        if (!active || !Array.isArray(data.notifications)) return;
+        const remoteItems: AlertItem[] = data.notifications.map((item: { id: string; title?: string; body?: string; created_at?: string }) => ({
+          id: "server-" + item.id,
+          title: item.title || "AlgoGuardian alert",
+          body: item.body || "",
+          receivedAt: item.created_at ? new Date(item.created_at).toLocaleString() : "Recently"
+        }));
+        setLatest(current => {
+          const merged = [...remoteItems, ...current];
+          return merged.filter((item, index) => merged.findIndex(other => other.id === item.id) === index).slice(0, 50);
+        });
+      } catch (error) {
+        if (active) setApiError(error instanceof Error ? error.message : "Could not load notification history.");
+      }
+    };
+    void loadHistory();
+    const timer = setInterval(() => { void loadHistory(); }, 8000);
+    return () => { active = false; clearInterval(timer); };
+  }, [tab, relayUrl, installationId, phoneSecret]);
+
   const runBotAction = (action: "start" | "pause") => {
     const isStart = action === "start";
     Alert.alert(isStart ? "Start trading engine?" : "Pause trading engine?",
