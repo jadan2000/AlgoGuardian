@@ -122,31 +122,44 @@ export function RegisterPage() {
               <p className="mt-2 text-sm leading-6 text-slate-400">Review these important terms before creating your account.</p>
             </header>
             <div className="space-y-5 overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-300 sm:px-8">
+              <p className="text-xs font-medium uppercase tracking-wide text-amber-300">Version 1.0 · 24 October 2026</p>
               <section>
                 <h3 className="mb-1 font-semibold text-white">1. Trading risk</h3>
-                <p>Forex and other leveraged trading involve substantial risk and may result in the loss of some or all of your trading capital. Only trade with money you can afford to lose. Past performance, signals, simulations, and examples do not guarantee future results.</p>
+                <p>Forex, contracts for difference (CFDs), leverage and automated trading are high-risk and may cause rapid losses, including the loss of all money in your trading account. You may lose more than expected due to leverage, market gaps, slippage, spreads, swaps, liquidity, execution or broker rules. Never trade money you cannot afford to lose. No strategy, risk setting, test or past result guarantees future performance or limits your loss to a particular amount.</p>
               </section>
               <section>
-                <h3 className="mb-1 font-semibold text-white">2. Tool, not financial advice</h3>
-                <p>AlgoGuardian provides trading automation and related tools. It does not provide personalised financial, investment, tax, or legal advice, and it does not guarantee profits, trading accuracy, uninterrupted operation, or avoidance of losses. You are responsible for deciding whether trading is suitable for you.</p>
+                <h3 className="mb-1 font-semibold text-white">2. What you authorise</h3>
+                <p>If you connect and enable AlgoGuardian for a broker/MetaTrader 5 account, you authorise the software to submit, modify and close trading orders on that account according to the strategy, settings and controls you select. You remain the account holder and are responsible for reviewing the strategy and settings, confirming the correct account is connected, monitoring activity and deciding whether to enable or stop automation. Do not connect an account or enable trading unless you understand and accept this authority. This agreement does not transfer ownership of your funds to AlgoGuardian.</p>
               </section>
               <section>
-                <h3 className="mb-1 font-semibold text-white">3. Your account and settings</h3>
-                <p>You are responsible for the accuracy and security of your account details, broker/MT5 account, trading permissions, strategy choices, lot sizes, and risk settings. Review settings carefully and test on a demo account before using real funds. Risk controls may not prevent losses during slippage, gaps, disconnections, execution delays, or market volatility.</p>
+                <h3 className="mb-1 font-semibold text-white">3. No advice or promised results</h3>
+                <p>AlgoGuardian is software, not a promise of profit. Unless expressly agreed in a separate written agreement and lawfully authorised, the service does not provide personalised investment advice, portfolio management advice, tax advice or legal advice. You make your own trading and funding decisions. Examples, demonstrations, backtests and simulated results may differ materially from live trading.</p>
               </section>
               <section>
-                <h3 className="mb-1 font-semibold text-white">4. Connectivity and availability</h3>
-                <p>Trading tools can be affected by internet interruptions, device or terminal availability, broker conditions, software faults, and third-party services. Do not assume the bot is running or that an order has executed unless you verify the status with your broker. Monitor open positions and maintain a plan for managing risk.</p>
+                <h3 className="mb-1 font-semibold text-white">4. Your responsibilities</h3>
+                <p>You must provide accurate information, use an account you are authorised to control, keep your login details and devices secure, choose appropriate settings, maintain sufficient margin, and comply with your broker's terms and applicable law. Test with a demo account before live use. Regularly check your broker account directly; never rely solely on the app to confirm positions, orders, balances or that automation has stopped.</p>
               </section>
               <section>
-                <h3 className="mb-1 font-semibold text-white">5. Responsible use</h3>
-                <p>You agree to use AlgoGuardian lawfully, keep your login credentials private, and not misuse, disrupt, or attempt to gain unauthorised access to the service. You remain responsible for complying with applicable laws and your broker’s terms.</p>
+                <h3 className="mb-1 font-semibold text-white">5. Service limits and third parties</h3>
+                <p>The service may be unavailable, delayed or inaccurate because of software errors, maintenance, internet or power failures, device or terminal shutdowns, broker/platform restrictions, market conditions or third-party services. Orders may be rejected, delayed, duplicated or executed at a different price; stops and other risk controls may fail or execute at a worse price. We do not control brokers or markets and cannot guarantee uninterrupted service, successful execution, data accuracy or that a stop command will cancel every pending order or close every position. Where safe and practical, verify and manage positions directly through your broker.</p>
               </section>
               <section>
-                <h3 className="mb-1 font-semibold text-white">6. Understanding and acceptance</h3>
-                <p>By accepting, you confirm that you have read and understood this agreement, understand the risks of automated trading, and accept responsibility for your trading decisions and account activity. If you do not agree, do not create an account or use the service.</p>
+                <h3 className="mb-1 font-semibold text-white">6. Fees, suspension and termination</h3>
+                <p>You are responsible for broker spreads, commissions, swaps, financing charges, taxes and any service fees disclosed to you. We may restrict, suspend or discontinue access where reasonably necessary for security, maintenance, suspected misuse, non-payment or legal compliance. You may stop using the service and disable automation, but stopping the software does not necessarily close existing positions or cancel pending orders; check your broker account and manage them yourself.</p>
               </section>
-              <p className="border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">This is a general product agreement and risk notice, not a substitute for legal advice. Have the final terms reviewed for the laws and jurisdictions where AlgoGuardian will be offered.</p>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">7. Liability</h3>
+                <p>To the fullest extent permitted by applicable law, AlgoGuardian is not liable for indirect, incidental, special or consequential loss, lost profits, lost opportunities, trading losses, or losses caused by brokers, markets, connectivity, devices or other third parties. Nothing in this agreement excludes or limits liability, rights or remedies that cannot lawfully be excluded or limited, including liability for fraud or wilful misconduct where exclusion is prohibited. This agreement does not guarantee compensation for trading losses and does not remove any rights you have under mandatory consumer or other applicable law.</p>
+              </section>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">8. Law and disputes</h3>
+                <p>This agreement is governed by the laws of Kenya, except where mandatory law requires otherwise. If a dispute arises, the parties should first try to resolve it in good faith. This does not prevent either party from seeking relief from a court or using any complaint or remedy available under applicable law.</p>
+              </section>
+              <section>
+                <h3 className="mb-1 font-semibold text-white">9. Acceptance</h3>
+                <p>By ticking the box and continuing, you confirm that you have read and understood this agreement, understand that AlgoGuardian may place and manage orders when you enable automated trading, and voluntarily accept the risks and terms above. If you do not agree, do not create an account or enable the service. If any term is unenforceable, the remaining terms continue to apply to the extent permitted by law.</p>
+              </section>
+              <p className="border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">This agreement does not override applicable law or your broker's terms. It should be reviewed by a Kenyan advocate before public launch, particularly because automated trading on customer accounts may trigger licensing or other regulatory requirements.</p>
             </div>
             <footer className="border-t border-white/10 bg-white/[0.02] px-6 py-5 sm:px-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
