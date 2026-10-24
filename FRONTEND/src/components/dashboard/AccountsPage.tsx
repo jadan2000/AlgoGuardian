@@ -121,11 +121,11 @@ export default function AccountsPage() {
       });
       setStatus(data);
       setPassword("");
-      if (data.connected) toast.success("Broker credentials encrypted and account connected.");
+      if (data.connected) toast.success("MT5 refreshed and connected to this account.");
       else {
-        const message = data.reason || "Credentials saved securely, but MT5 is not connected yet.";
+        const message = data.reason || "Credentials were saved securely, but MT5 is not connected yet.";
         setError(message);
-        toast.warning("Credentials saved, but connection needs attention.");
+        toast.warning("Credentials saved, but the MT5 connection needs attention.");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not save broker credentials.";
@@ -137,7 +137,6 @@ export default function AccountsPage() {
   };
 
   const busy = saving || savingTerminalPath || action !== null;
-
 
   const saveTerminalPath = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -166,7 +165,7 @@ export default function AccountsPage() {
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"><WalletCards className="h-4 w-4" /> Account management</div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Broker Accounts</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Manage the single MetaTrader 5 account used by this AlgoGuardian backend.</p>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Manage the single MetaTrader 5 account used by this AlgoGuardian laptop. Saving new credentials refreshes the MT5 connection and switches to that account.</p>
         </div>
         <Button variant="outline" onClick={() => void loadStatus(true)} disabled={busy || loading}>
           {loading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Refresh status
@@ -181,7 +180,7 @@ export default function AccountsPage() {
             </div>
             <div>
               <h2 className="font-semibold">MetaTrader 5 connection</h2>
-              <p className="text-sm text-muted-foreground">{status?.connected ? "The backend is connected to your saved broker account." : status?.configured ? "Credentials are saved, but the account is currently offline." : "No broker account has been configured yet."}</p>
+              <p className="text-sm text-muted-foreground">{status?.connected ? "The laptop backend is connected to your saved broker account." : status?.configured ? "Credentials are saved, but the account is currently offline." : "No broker account has been configured yet."}</p>
             </div>
           </div>
           <span className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${status?.connected ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
@@ -233,7 +232,7 @@ export default function AccountsPage() {
       <Card className="p-5 sm:p-6">
         <div className="mb-5 flex items-start gap-3">
           <div className="rounded-lg bg-primary/10 p-2 text-primary"><KeyRound className="h-5 w-5" /></div>
-          <div><h2 className="font-semibold">{status?.configured ? "Update broker credentials" : "Connect your broker account"}</h2><p className="mt-1 text-sm text-muted-foreground">Your credentials are encrypted on the backend. The password is never returned to this page.</p></div>
+          <div><h2 className="font-semibold">{status?.configured ? "Update broker credentials" : "Connect your broker account"}</h2><p className="mt-1 text-sm text-muted-foreground">Enter your MT5 login, trading password and broker server. Credentials are encrypted on the laptop backend; the password is never returned to this page. You can use this form again whenever you want to switch accounts.</p></div>
         </div>
         <form onSubmit={saveCredentials} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -251,7 +250,7 @@ export default function AccountsPage() {
         </form>
       </Card>
 
-      <div className="flex items-start gap-2 text-xs text-muted-foreground"><CircleHelp className="mt-0.5 h-4 w-4 shrink-0" /><p>MT5's Python integration requires a compatible MT5 terminal and backend environment. Saving credentials does not install or start a terminal that is missing.</p></div>
+      <div className="flex items-start gap-2 text-xs text-muted-foreground"><CircleHelp className="mt-0.5 h-4 w-4 shrink-0" /><p>MT5's Python integration requires a compatible MT5 terminal and backend environment. Saving credentials does not install a missing terminal; the terminal must be installed on this laptop.</p></div>
     </div>
   );
 }
