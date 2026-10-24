@@ -60,7 +60,7 @@ export default function App() {
   const [permission, setPermission] = useState("Checking notification permission…");
   const [fcmToken, setFcmToken] = useState("");
   const [relayUrl, setRelayUrl] = useState("");
-  const [installationId, setInstallationId] = useState("");
+  const [installationId, setInstallationId] = useState("");\n  const [phoneSecret, setPhoneSecret] = useState("");
   const [registration, setRegistration] = useState("Not paired");
   const [busy, setBusy] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -88,7 +88,7 @@ export default function App() {
       if (mounted) {
         if (savedRelay) setRelayUrl(savedRelay);
         if (savedInstallation) setInstallationId(savedInstallation);
-        if (savedApi) { setApiUrl(savedApi); setApiDraft(savedApi); }
+        if (savedPhoneSecret) setPhoneSecret(savedPhoneSecret);
       }
       if (!Device.isDevice) {
         if (mounted) setPermission("Use a physical Android phone for push notifications.");
@@ -120,99 +120,63 @@ export default function App() {
     return () => { mounted = false; received.remove(); response.remove(); };
   }, []);
 
-  const baseUrl = useMemo(() => apiUrl.trim().replace(/\/+$/, ""), [apiUrl]);
   const refreshDashboard = useCallback(async (quiet = false) => {
-    if (!baseUrl) { setApiError("Add your Windows PC's local API address in Settings to load live account data."); return; }
+    if (!relayUrl || !installationId || !phoneSecret) {
+      setApiError("Pair this phone with the Windows installation to load account data.");
+      return;
+    }
     if (!quiet) setLoading(true);
     setApiError("");
     try {
-      const results = await Promise.all([
-        fetch(baseUrl + "/api/trading/account"),
-        fetch(baseUrl + "/bot/status"),
-        fetch(baseUrl + "/trades")
-      ]);
-      const [accountResponse, botResponse, tradesResponse] = results;
-      if (!accountResponse.ok || !botResponse.ok || !tradesResponse.ok) {
-        throw new Error("Windows API returned an error. Check the PC address and that AlgoGuardian is running.");
-      }
-      const [accountData, botData, tradesData] = await Promise.all([
-        accountResponse.json(), botResponse.json(), tradesResponse.json()
-      ]);
-      if (accountData.error) throw new Error(accountData.error);
-      setAccount(accountData);
-      setBot(botData);
-      setTrades(Array.isArray(tradesData) ? tradesData : []);
-      setLastUpdated(new Date().toLocaleTimeString());
+      const response = await fetch(relayUrl, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_snapshot", installation_id: installationId, phone_secret: phoneSecret })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Remote relay request failed.");
+      const snapshot = data.snapshot;
+      if (!snapshot) throw new Error("Waiting for the Windows installation to publish its first snapshot.");
+      const seen = data.last_seen_at ? new Date(data.last_seen_at).getTime() : 0;
+      if (!seen || Date.now() - seen > 30000) throw new Error("Windows installation is offline or its data is stale.");
+      setAccount(snapshot.account || null);
+      setBot(snapshot.engine || null);
+      setTrades(Array.isArray(snapshot.account?.closed_trades) ? snapshot.account.closed_trades : []);
+      setLastUpdated(new Date(seen).toLocaleTimeString());
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : "Could not reach the Windows PC.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [baseUrl]);
+      setApiError(error instanceof Error ? error.message : "Could not retrieve remote account data.");
+    } finally { setLoading(false); setRefreshing(false); }
+  }, [relayUrl, installationId, phoneSecret]);
 
   useEffect(() => {
-    if (!baseUrl) return;
+    if (!relayUrl || !installationId || !phoneSecret) return;
     void refreshDashboard(true);
     const timer = setInterval(() => { void refreshDashboard(true); }, 10000);
     return () => clearInterval(timer);
-  }, [baseUrl, refreshDashboard]);
+  }, [relayUrl, installationId, phoneSecret, refreshDashboard]);
 
-  const saveApiUrl = async () => {
-    const value = apiDraft.trim().replace(/\/+$/, "");
-    if (!/^https?:\/\//i.test(value)) {
-      Alert.alert("Check the PC address", "Enter a full address such as http://192.168.1.20:8000");
-      return;
-    }
-    await SecureStore.setItemAsync(API_KEY, value);
-    setApiUrl(value);
-    setApiDraft(value);
-    setApiError("");
-    Alert.alert("PC address saved", "AlgoGuardian will now try to load live account data from this Windows PC.");
-  };
-
-  const runBotAction = (action: "start" | "pause" | "kill") => {
-    const labels = { start: "Start trading engine?", pause: "Pause trading engine?", kill: "Activate emergency stop?" };
-    const messages = {
-      start: "This sends the start command to your Windows trading engine. Confirm your strategy and risk settings first.",
-      pause: "The engine will stop opening new trades. Existing positions remain open.",
-      kill: "This activates the emergency stop on the Windows engine. Review existing positions separately; this action does not guarantee they are closed."
-    };
-    Alert.alert(labels[action], messages[action], [
-      { text: "Cancel", style: "cancel" },
-      { text: action === "kill" ? "Activate stop" : action === "start" ? "Start engine" : "Pause engine", style: action === "kill" ? "destructive" : "default", onPress: () => { void (async () => {
-        if (!baseUrl) { Alert.alert("PC not configured", "Add the Windows PC API address in Settings first."); return; }
+  const runBotAction = (action: "start" | "pause") => {
+    const isStart = action === "start";
+    Alert.alert(isStart ? "Start trading engine?" : "Pause trading engine?",
+      isStart ? "The Windows engine will validate its local MT5 connection and configuration before starting. Real trades may occur." :
+        "The engine will stop opening new trades. Existing positions remain open.",
+      [{ text: "Cancel", style: "cancel" }, { text: isStart ? "Start engine" : "Pause engine", onPress: () => { void (async () => {
+        if (!relayUrl || !installationId || !phoneSecret) {
+          Alert.alert("Phone not paired", "Pair this phone with your Windows installation first."); return;
+        }
         setActionBusy(true);
         try {
-          const response = await fetch(baseUrl + "/bot/" + action, { method: "POST" });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.detail || "Action failed (" + response.status + ").");
-          await refreshDashboard(true);
-          Alert.alert("Command sent", action === "kill" ? "Emergency stop command sent to the Windows engine." : action === "start" ? "Start command sent." : "Pause command sent.");
+          const response = await fetch(relayUrl, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "enqueue_command", installation_id: installationId, phone_secret: phoneSecret, command: action })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Could not queue command.");
+          Alert.alert("Command queued", "The Windows installation will validate and process the " + action + " request. Check engine status for confirmation.");
+          setTimeout(() => { void refreshDashboard(true); }, 3000);
         } catch (error) {
-          Alert.alert("Command failed", error instanceof Error ? error.message : "Could not reach the Windows PC.");
+          Alert.alert("Command failed", error instanceof Error ? error.message : "Remote relay is unavailable.");
         } finally { setActionBusy(false); }
-      })(); } }
-    ]);
-  };
-
-  const closePosition = (trade: Position) => {
-    const ticket = trade.ticket ?? trade.position_ticket ?? trade.position_id;
-    if (ticket == null) return;
-    Alert.alert("Close this position?", "Send a market-close request for " + (trade.symbol || "this position") + " #" + ticket + ". This is a real trading action.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Close position", style: "destructive", onPress: () => { void (async () => {
-        setActionBusy(true);
-        try {
-          const response = await fetch(baseUrl + "/bot/trades/" + ticket + "/close", { method: "POST" });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.detail || "Close request failed.");
-          await refreshDashboard(true);
-          Alert.alert("Close request completed", data.message || "The backend accepted the close request.");
-        } catch (error) { Alert.alert("Could not close position", error instanceof Error ? error.message : "Try again after checking MT5."); }
-        finally { setActionBusy(false); }
-      })(); } }
-    ]);
+      })(); } }]);
   };
 
   const openScanner = async () => {
@@ -256,7 +220,7 @@ export default function App() {
 
   const unpairDevice = async () => {
     if (!relayUrl || !installationId || !fcmToken) {
-      await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY);
+      await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY);\n      await SecureStore.deleteItemAsync(PHONE_SECRET_KEY);
       setRelayUrl(""); setInstallationId(""); setRegistration("Pairing details cleared."); return;
     }
     Alert.alert("Unpair this phone?", "This removes the saved pairing details from this app.", [
@@ -264,7 +228,7 @@ export default function App() {
       { text: "Unpair", style: "destructive", onPress: () => { void (async () => {
         setBusy(true);
         try {
-          const response = await fetch(relayUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "remove_device_public", installation_id: installationId, token: fcmToken }) });
+          const response = await fetch(relayUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "remove_device_public", installation_id: installationId, phone_secret: phoneSecret, token: fcmToken }) });
           if (!response.ok) throw new Error("Unpair request failed (HTTP " + response.status + ").");
           await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY);
           setRelayUrl(""); setInstallationId(""); setRegistration("Phone unpaired");
@@ -341,7 +305,7 @@ export default function App() {
             <View style={styles.controlRow}>
               <Pressable style={[styles.controlButton, styles.startButton]} onPress={() => runBotAction("start")} disabled={actionBusy}><Text style={styles.startText}>{actionBusy ? "PLEASE WAIT…" : "▶  START"}</Text></Pressable>
               <Pressable style={styles.controlButton} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={styles.controlText}>Ⅱ  PAUSE</Text></Pressable>
-              <Pressable style={[styles.controlButton, styles.stopButton]} onPress={() => runBotAction("kill")} disabled={actionBusy}><Text style={styles.stopText}>■  STOP</Text></Pressable>
+              <Pressable style={[styles.controlButton, styles.stopButton]} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={styles.stopText}>■  STOP</Text></Pressable>
             </View>
           </View>
           <View style={styles.card}>{cardTitle("OPEN POSITIONS", String(positions.length))}
@@ -374,15 +338,13 @@ export default function App() {
         </>}
 
         {tab === "settings" && <>
-          <Text style={styles.eyebrow}>LOCAL CONNECTION</Text><Text style={styles.pageTitle}>Settings</Text>
-          <View style={styles.card}>{cardTitle("WINDOWS PC CONNECTION")}
-            <Text style={styles.mutedText}>Enter the local network address of the Windows PC running AlgoGuardian. Example: http://192.168.1.20:8000. Your phone and PC should be on the same trusted Wi-Fi network. Do not expose the backend port to the public internet.</Text>
-            <Text style={styles.inputLabel}>WINDOWS API BASE URL</Text>
-            <TextInput value={apiDraft} onChangeText={setApiDraft} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.20:8000" placeholderTextColor="#65768D" style={styles.input} />
-            <Pressable style={[styles.primaryButton, { marginTop: 12 }]} onPress={() => void saveApiUrl()}><Text style={styles.primaryButtonText}>SAVE PC ADDRESS</Text></Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => void refreshDashboard()}><Text style={styles.controlText}>TEST CONNECTION / REFRESH</Text></Pressable>
+          <Text style={styles.eyebrow}>SECURE REMOTE CONNECTION</Text><Text style={styles.pageTitle}>Settings</Text>
+          <View style={styles.card}>{cardTitle("REMOTE WINDOWS CONNECTION")}
+            <Text style={styles.mutedText}>Pair this phone using the one-time QR code on your Windows dashboard. Account snapshots and start/pause requests travel through the HTTPS relay, so your phone and PC can use different networks. No public PC port or local IP is needed.</Text>
+            <View style={styles.pairStatus}><View style={[styles.connectionDot, { backgroundColor: installationId && phoneSecret ? C.green : C.amber }]} /><Text style={styles.mutedText}>{installationId && phoneSecret ? "Remote phone access paired" : "Not paired"}</Text></View>
+            <Pressable style={styles.secondaryButton} onPress={() => void refreshDashboard()}><Text style={styles.controlText}>TEST RELAY / REFRESH</Text></Pressable>
             {apiError ? <Text style={styles.errorText}>{apiError}</Text> : null}
-            <Text style={styles.mutedText}>{lastUpdated ? "Last successful update: " + lastUpdated : "No successful connection yet."}</Text>
+            <Text style={styles.mutedText}>{lastUpdated ? "Last snapshot: " + lastUpdated : "No snapshot received yet."}</Text>
           </View>
           <View style={styles.card}>{cardTitle("PHONE PUSH PAIRING")}
             <Text style={styles.mutedText}>Scan the one-time QR code generated in the Windows dashboard under Broker Accounts. Push notifications require a physical Android phone and a native development/production build, not Expo Go.</Text>
