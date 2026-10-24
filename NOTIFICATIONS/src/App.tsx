@@ -14,7 +14,8 @@ Notifications.setNotificationHandler({
   })
 });
 
-type AlertItem = { id: string; title: string; body: string; receivedAt: string };\nconst NOTIFICATIONS_KEY = "algoguardian_notification_history";
+type AlertItem = { id: string; title: string; body: string; receivedAt: string };
+const NOTIFICATIONS_KEY = "algoguardian_notification_history";
 type Position = {
   ticket?: number | string; position_ticket?: number | string; position_id?: number | string;
   symbol?: string; type?: string; volume?: number; entry_price?: number; current_price?: number;
