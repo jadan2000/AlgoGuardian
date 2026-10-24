@@ -81,6 +81,7 @@ export function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const AGREEMENT_VERSION = "1.0";
   const [agreementOpen, setAgreementOpen] = useState(true);
 
   if (loading) return <AuthLayout><div className="text-center text-slate-400">Loading your account…</div></AuthLayout>;
@@ -104,8 +105,17 @@ export function RegisterPage() {
     });
     setBusy(false);
     if (authError) return setError(authError.message);
-    if (!data.session) {
-      return setError("Supabase is still requiring email confirmation. In Supabase Dashboard, turn off Confirm email under Authentication settings, then register again.");
+    if (!data.session || !data.user) {
+      return setError("Your account was created, but agreement acceptance could not be recorded because no active session was returned. Sign in and contact support before using AlgoGuardian.");
+    }
+    const { error: acceptanceError } = await supabase
+      .from("agreement_acceptances")
+      .insert({
+        user_id: data.user.id,
+        agreement_version: AGREEMENT_VERSION,
+      });
+    if (acceptanceError) {
+      return setError("Your account was created, but we could not securely record your agreement acceptance. Please sign in and contact support before using AlgoGuardian.");
     }
     toast.success("Account created successfully.");
     navigate("/activation", { replace: true });
@@ -122,7 +132,7 @@ export function RegisterPage() {
               <p className="mt-2 text-sm leading-6 text-slate-400">Review these important terms before creating your account.</p>
             </header>
             <div className="space-y-5 overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-300 sm:px-8">
-              <p className="text-xs font-medium uppercase tracking-wide text-amber-300">Version 1.0 · 24 October 2026</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-amber-300">Version 1.0</p>
               <section>
                 <h3 className="mb-1 font-semibold text-white">1. Trading risk</h3>
                 <p>Forex, contracts for difference (CFDs), leverage and automated trading are high-risk and may cause rapid losses, including the loss of all money in your trading account. You may lose more than expected due to leverage, market gaps, slippage, spreads, swaps, liquidity, execution or broker rules. Never trade money you cannot afford to lose. No strategy, risk setting, test or past result guarantees future performance or limits your loss to a particular amount.</p>
