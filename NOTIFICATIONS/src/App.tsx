@@ -83,13 +83,15 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
     const setup = async () => {
-      const [savedRelay, savedInstallation, savedPhoneSecret] = await Promise.all([
-        SecureStore.getItemAsync(URL_KEY), SecureStore.getItemAsync(INSTALLATION_KEY), SecureStore.getItemAsync(PHONE_SECRET_KEY)
+      const [savedRelay, savedInstallation, savedPhoneSecret, savedTheme] = await Promise.all([
+        SecureStore.getItemAsync(URL_KEY), SecureStore.getItemAsync(INSTALLATION_KEY), SecureStore.getItemAsync(PHONE_SECRET_KEY),
+        SecureStore.getItemAsync("algoguardian_theme")
       ]);
       if (mounted) {
         if (savedRelay) setRelayUrl(savedRelay);
         if (savedInstallation) setInstallationId(savedInstallation);
         if (savedPhoneSecret) setPhoneSecret(savedPhoneSecret);
+        if (savedTheme === "light") setIsLight(true);
       }
       if (!Device.isDevice) {
         if (mounted) setPermission("Use a physical Android phone for push notifications.");
