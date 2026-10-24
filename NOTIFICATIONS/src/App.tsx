@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   brandCaption: { color: "#C7A34A", fontSize: 8, letterSpacing: 1.6, marginTop: 3, fontWeight: "800" },
   connectionDot: { width: 7, height: 7, borderRadius: 5 },
   topStatus: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.7 },
-  page: { padding: 18, paddingBottom: 34, gap: 16 },
+  page: { padding: 18, paddingBottom: 124, gap: 16 },
   greetingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 2 },
   eyebrow: { color: "#D8AF46", fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginBottom: 7 },
   pageTitle: { color: C.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
@@ -449,11 +449,11 @@ const styles = StyleSheet.create({
   alertBody: { color: "#B5C1D2", fontSize: 12, lineHeight: 18, marginTop: 4 },
   alertTime: { color: "#6F8098", fontSize: 9, marginTop: 6 },
   status: { color: C.text, fontSize: 14, fontWeight: "700" },
-  tabbar: { flexDirection: "row", backgroundColor: "#0B0A08", borderTopColor: "#3B3019", borderTopWidth: 1, paddingTop: 8, paddingBottom: Platform.OS === "android" ? 8 : 5 },
-  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 4 },
+  tabbar: { position: "absolute", left: 18, right: 18, bottom: Platform.OS === "android" ? 14 : 20, flexDirection: "row", alignItems: "center", backgroundColor: "#15120B", borderColor: "#5A451D", borderWidth: 1, borderRadius: 30, paddingHorizontal: 7, paddingTop: 8, paddingBottom: Platform.OS === "android" ? 8 : 7, minHeight: 66, elevation: 12, shadowColor: "#000000", shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 5, borderRadius: 24 },
   tabIcon: { fontSize: 19, lineHeight: 23 },
   tabLabel: { fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
-  tabIndicator: { position: "absolute", top: -8, width: 24, height: 2, borderRadius: 2, backgroundColor: "#E8BD53" },
+  tabIndicator: { position: "absolute", top: 0, width: 18, height: 2, borderRadius: 2, backgroundColor: "#E8BD53" },
   busyOverlay: { position: "absolute", left: 0, right: 0, bottom: 60, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#172333", padding: 12, borderTopColor: C.line, borderTopWidth: 1 },
   busyText: { color: C.text, fontSize: 11, fontWeight: "700" }
 });
