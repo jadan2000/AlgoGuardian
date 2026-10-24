@@ -24,7 +24,7 @@ from api.routes.trades import router as trades_router
 from engine.bot_runner import run_bot
 from engine.session_manager import SessionManager
 from services import bot_state
-from services.config_service import load_config
+from services.config_service import load_config\nfrom services.remote_monitoring import start_remote_monitoring, stop_remote_monitoring
 from engine.mt5_connector import MT5Connector
 import MetaTrader5 as mt5
 
