@@ -1,15 +1,13 @@
-"""Direct Firebase Cloud Messaging sender for the local AlgoGuardian backend.
+"""Firebase Cloud Messaging sender for this local AlgoGuardian installation.
 
-Configure GOOGLE_APPLICATION_CREDENTIALS with a Firebase service-account JSON
-file kept outside source control, and FIREBASE_NOTIFICATION_DEVICE_TOKENS with
-one or more comma-separated FCM device tokens copied from the Android app.
-
-This sends directly from the existing backend process. It starts no bridge,
-relay, HTTP server, or separate worker process.
+Device tokens are read from a per-installation registry on the Windows PC.
+Never use a shared token list across customers or copy the registry between PCs.
 """
 import os
 import threading
 from functools import lru_cache
+
+from services.notification_devices import registered_tokens
 
 _EVENT_TITLES = {
     "engine_started": "AlgoGuardian started",
@@ -40,11 +38,7 @@ def _firebase_app():
 
 
 def _send(event: str, message: str) -> None:
-    tokens = [
-        token.strip()
-        for token in os.getenv("FIREBASE_NOTIFICATION_DEVICE_TOKENS", "").split(",")
-        if token.strip()
-    ]
+    tokens = registered_tokens()
     if not tokens:
         return
 
@@ -53,6 +47,8 @@ def _send(event: str, message: str) -> None:
 
         app = _firebase_app()
         title = _EVENT_TITLES.get(event, "AlgoGuardian alert")
+        # The registry is local to this Windows installation. Every phone here
+        # belongs to the customer who owns this engine/account.
         for start in range(0, len(tokens), 500):
             chunk = tokens[start : start + 500]
             payload = messaging.MulticastMessage(
@@ -70,17 +66,21 @@ def _send(event: str, message: str) -> None:
             result = messaging.send_each_for_multicast(payload, app=app)
             for index, response in enumerate(result.responses):
                 if not response.success:
-                    print(f"[FCM] Delivery failed for token index {start + index}: {response.exception}")
+                    print(f"[FCM] Delivery failed for local device index {start + index}: {response.exception}")
     except Exception as exc:
         print(f"[FCM] Notification send failed: {type(exc).__name__}: {exc}")
 
 
 def send_push(event: str, message: str) -> None:
-    """Queue a best-effort push send without blocking trading logic."""
+    """Start a best-effort push send without blocking trading logic."""
     if event not in _EVENT_TITLES:
         print(f"[FCM] Ignoring unknown notification event: {event}")
         return
-    if not os.getenv("FIREBASE_NOTIFICATION_DEVICE_TOKENS", "").strip():
+    try:
+        if not registered_tokens():
+            return
+    except Exception as exc:
+        print(f"[FCM] Device registry unavailable: {type(exc).__name__}: {exc}")
         return
     threading.Thread(
         target=_send,
