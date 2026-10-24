@@ -1,11 +1,11 @@
-{
+﻿{
   "expo": {
     "name": "AlgoGuardian Alerts",
     "slug": "algoguardian-alerts",
     "scheme": "algoguardian-alerts",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "android": {
       "package": "com.algoguardian.alerts",
@@ -24,8 +24,14 @@
       ],
       "expo-notifications",
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      "expo-navigation-bar"
     ],
+    "androidNavigationBar": {
+      "visible": "sticky-immersive",
+      "barStyle": "dark-content",
+      "backgroundColor": "#F5F3ED"
+    },
     "extra": {
       "eas": {
         "projectId": "6528a36e-796e-40e4-97cc-c94c944ea7c1"
