@@ -124,14 +124,14 @@ export function RegisterPage() {
   return (
     <AuthLayout>
       {agreementOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="agreement-title">
-          <section className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-amber-300/25 bg-slate-950 shadow-2xl shadow-black/50">
-            <header className="border-b border-white/10 px-6 py-5 sm:px-8">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/85 px-5 py-[35px] backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="agreement-title">
+          <section className="my-auto flex max-h-[calc(100vh-70px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-amber-300/25 bg-slate-950 shadow-2xl shadow-black/50">
+            <header className="border-b border-white/10 px-5 py-5">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">Please read before continuing</p>
               <h2 id="agreement-title" className="text-2xl font-semibold tracking-tight text-white">AlgoGuardian Agreement</h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">Review these important terms before creating your account.</p>
             </header>
-            <div className="space-y-5 overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-300 sm:px-8">
+            <div className="space-y-5 overflow-y-auto px-5 py-5 text-base leading-7 text-slate-300">
               <p className="text-xs font-medium uppercase tracking-wide text-amber-300">Version 1.0</p>
               <section>
                 <h3 className="mb-1 font-semibold text-white">1. Trading risk</h3>
@@ -169,9 +169,8 @@ export function RegisterPage() {
                 <h3 className="mb-1 font-semibold text-white">9. Acceptance</h3>
                 <p>By ticking the box and continuing, you confirm that you have read and understood this agreement, understand that AlgoGuardian may place and manage orders when you enable automated trading, and voluntarily accept the risks and terms above. If you do not agree, do not create an account or enable the service. If any term is unenforceable, the remaining terms continue to apply to the extent permitted by law.</p>
               </section>
-              <p className="border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">This agreement does not override applicable law or your broker's terms. It should be reviewed by a Kenyan advocate before public launch, particularly because automated trading on customer accounts may trigger licensing or other regulatory requirements.</p>
             </div>
-            <footer className="border-t border-white/10 bg-white/[0.02] px-6 py-5 sm:px-8">
+            <footer className="border-t border-white/10 bg-white/[0.02] px-5 py-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <label className="flex cursor-pointer items-start gap-3 text-sm leading-5 text-slate-200">
                   <input type="checkbox" checked={agreementAccepted} onChange={event => setAgreementAccepted(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-amber-300" />
