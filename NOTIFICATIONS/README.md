@@ -1,26 +1,35 @@
 # AlgoGuardian Notifications
 
-Android notification-only companion built with Expo + React Native. It contains no broker login, broker passwords, trading settings, or order controls.
+Android notification-only companion built with Expo + React Native and Firebase Cloud Messaging (FCM). It contains no broker login, broker passwords, trading settings, or order controls.
 
-## Current integration
+## Architecture
 
-- The app requests notification permission and obtains an Expo push token on a physical device when an Expo EAS project ID is configured.
-- The TypeScript relay exposes `GET /health` and authenticated `POST /v1/notify`.
-- The local Windows bridge can send `mt5_disconnected` and `mt5_reconnected` events to the relay when the configured MT5 connection changes.
-- Trade, engine, and risk-limit events are defined in the relay schema but are not emitted by the bridge prototype because there is not yet a local execution engine connected to those events.
+- The Android app registers a native FCM device token, not an Expo push token.
+- The existing Windows AlgoGuardian backend sends notification events directly to Firebase using the Firebase Admin Python SDK.
+- No local bridge process, Expo push relay, or separately hosted notification server is required.
+- The trading engine and MT5 terminal remain on the Windows PC. Firebase only transports push notifications.
 
-## Setup
+## One-time Firebase setup
 
-1. Install Node.js 20+.
-2. From this directory, run `npm install`.
-3. Configure an Expo EAS project and set its project ID in `app.json` / Expo config, then run `npm run start` and test on a physical Android device.
-4. Deploy the relay as a separate HTTPS Node service using `npm run relay`. Configure server-side `RELAY_API_KEY` and, if required by your Expo setup, `EXPO_ACCESS_TOKEN`. Never expose these secrets in the mobile app or browser.
-5. In the phone app, copy the displayed Expo push token. On the Windows laptop, copy `BRIDGE/config.example.json` to `BRIDGE/config.json` and set `notification_relay_url`, `notification_relay_api_key`, and `notification_device_token`. Keep that file local and private.
-6. Test by opening and disconnecting/reconnecting the demo MT5 terminal. The bridge observes status on dashboard refresh and sends a push on a detected connection-state change.
+1. Open the Firebase console and create/select an AlgoGuardian project.
+2. In Project settings, add an Android app with package name `com.algoguardian.alerts`.
+3. Download that app's `google-services.json` and place it at `NOTIFICATIONS/google-services.json`. Do not commit it; it is ignored by `.gitignore`.
+4. Enable Cloud Messaging for the Firebase project. Build and install a native Android build; remote push notifications do not work in Expo Go.
+5. From `NOTIFICATIONS/`, install dependencies with `npm install` and build using your configured Expo/EAS Android workflow. The native token shown in the app is the FCM token.
 
-## Important
+## Configure the Windows backend
 
-- Push notifications require a working relay, Expo project configuration, network access, and OS notification permission.
-- No alert can be delivered if the laptop or network abruptly loses power/connectivity before sending it.
-- Store push tokens and relay secrets securely. Never commit local `config.json`, `.env`, signing keys, or customer tokens.
-- This is a prototype integration, not a production-certified alerting service. Before production, add authenticated device pairing, durable token storage, rate limits, relay monitoring, retry/queueing, and end-to-end tests.
+1. In Firebase Console > Project settings > Service accounts, generate a Firebase Admin SDK service-account key. Store the JSON file securely outside the repository and never share it with customers or commit it.
+2. Install backend dependencies from `BACKEND/` with `pip install -r requirements.txt`.
+3. In the private `BACKEND/.env`, set:
+   - `GOOGLE_APPLICATION_CREDENTIALS=C:/secure/path/firebase-admin.json` (use the real path to your private service-account file).
+   - `FIREBASE_NOTIFICATION_DEVICE_TOKENS=FCM_TOKEN_1,FCM_TOKEN_2` (paste the FCM token shown by each registered phone; multiple tokens are comma-separated).
+4. Restart the backend. The backend sends best-effort push alerts when the bot starts, pauses, or is stopped by the kill switch; when an automated order succeeds; and when a trade is manually closed. Push sends run asynchronously so notification failures do not block trading or order execution.
+
+## Security and limitations
+
+- Never embed Firebase Admin service-account credentials in the Android app or distribute them to users. They belong only on the trusted Windows backend.
+- FCM tokens are device-specific and can rotate; refresh the configured token if delivery stops.
+- This initial integration uses a private local token list. Customer self-registration at scale would require an authenticated token registry (for example, Firebase Authentication + Firestore rules); never expose the service-account key to phones.
+- FCM delivery requires internet access on the Windows PC when sending and internet access on the phone. If the PC loses power before an event is sent, Firebase cannot know that event occurred.
+- Firebase Cloud Messaging itself has no-cost usage, but other Firebase services or build services may have separate limits or charges.

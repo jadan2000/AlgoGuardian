@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import Constants from "expo-constants";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,31 +16,50 @@ type AlertItem = { title: string; body: string; receivedAt: string };
 
 export default function App() {
   const [permission, setPermission] = useState("Checking");
-  const [pushToken, setPushToken] = useState("");
+  const [fcmToken, setFcmToken] = useState("");
   const [latest, setLatest] = useState<AlertItem[]>([]);
 
   useEffect(() => {
     let mounted = true;
     const setup = async () => {
       if (!Device.isDevice) {
-        if (mounted) setPermission("Use a physical Android device for push notifications.");
+        if (mounted) setPermission("Use a physical Android device for Firebase push notifications.");
         return;
       }
+
+      // Android 8+ requires a notification channel before displaying alerts.
+      await Notifications.setNotificationChannelAsync("algoguardian-alerts", {
+        name: "AlgoGuardian Alerts",
+        importance: Notifications.AndroidImportance.MAX,
+        sound: "default",
+        vibrationPattern: [0, 250, 250, 250]
+      });
+
       const current = await Notifications.getPermissionsAsync();
       let status = current.status;
       if (status !== "granted") status = (await Notifications.requestPermissionsAsync()).status;
       if (!mounted) return;
-      setPermission(status === "granted" ? "Notifications enabled" : "Notifications permission not granted");
-      if (status !== "granted") return;
-      const projectId = Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
-      if (!projectId) {
-        setPermission("Permission granted; configure an Expo EAS project ID to register push delivery.");
+      if (status !== "granted") {
+        setPermission("Notifications permission not granted");
         return;
       }
-      const token = await Notifications.getExpoPushTokenAsync({ projectId });
-      if (mounted) setPushToken(token.data);
+      setPermission("Notifications enabled — registering with Firebase");
+      // Native device token is an FCM token on Android. No Expo relay or EAS
+      // project ID is used by the sender path.
+      const token = await Notifications.getDevicePushTokenAsync();
+      if (mounted) {
+        setFcmToken(String(token.data));
+        setPermission("Firebase push ready");
+      }
     };
-    void setup().catch(() => { if (mounted) setPermission("Notification setup failed. Check permissions and project configuration."); });
+
+    void setup().catch((error: unknown) => {
+      if (mounted) {
+        const detail = error instanceof Error ? error.message : "Unknown setup error";
+        setPermission("Firebase setup failed. Check google-services.json and the Android build. " + detail);
+      }
+    });
+
     const received = Notifications.addNotificationReceivedListener((notification) => {
       const content = notification.request.content;
       setLatest((items) => [{ title: content.title ?? "AlgoGuardian alert", body: content.body ?? "", receivedAt: new Date().toLocaleString() }, ...items].slice(0, 20));
@@ -50,6 +68,7 @@ export default function App() {
       const content = event.notification.request.content;
       setLatest((items) => [{ title: content.title ?? "AlgoGuardian alert", body: content.body ?? "", receivedAt: new Date().toLocaleString() }, ...items].slice(0, 20));
     });
+
     return () => { mounted = false; received.remove(); response.remove(); };
   }, []);
 
@@ -62,19 +81,24 @@ export default function App() {
           <View><Text style={styles.brand}>AlgoGuardian</Text><Text style={styles.subBrand}>Phone alerts</Text></View>
         </View>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>NOTIFICATION-ONLY COMPANION</Text>
+          <Text style={styles.eyebrow}>FIREBASE PUSH NOTIFICATIONS</Text>
           <Text style={styles.title}>Your trading.{"\n"}Always in view.</Text>
-          <Text style={styles.description}>Receive alerts from AlgoGuardian on your laptop. Broker credentials, trading settings, and orders stay on the laptop.</Text>
+          <Text style={styles.description}>Receive alerts from AlgoGuardian on your Windows PC. Broker credentials, trading settings, and orders stay on the PC. Firebase delivers notifications directly to this phone.</Text>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardLabel}>PUSH STATUS</Text>
           <Text style={styles.status}>{permission}</Text>
-          <Text style={styles.hint}>Push delivery needs a configured relay and Expo project.</Text>
-          {pushToken ? <Text selectable style={styles.token}>Device token: {pushToken}</Text> : null}
+          <Text style={styles.hint}>Build the Android app with your Firebase project's google-services.json. The Windows backend sends alerts directly to Firebase Cloud Messaging.</Text>
+          {fcmToken ? (
+            <>
+              <Text style={styles.tokenLabel}>FCM DEVICE TOKEN (copy to your private backend .env)</Text>
+              <Text selectable style={styles.token}>{fcmToken}</Text>
+            </>
+          ) : null}
         </View>
         <View style={styles.card}>
           <Text style={styles.cardLabel}>RECENT ALERTS</Text>
-          {latest.length === 0 ? <Text style={styles.hint}>No alerts received yet. Notification pairing and relay delivery still need configuration.</Text> : latest.map((item, index) => (
+          {latest.length === 0 ? <Text style={styles.hint}>No alerts received yet. Configure Firebase and register this device token with the Windows backend.</Text> : latest.map((item, index) => (
             <View key={item.receivedAt + "-" + index} style={styles.alert}>
               <Text style={styles.alertTitle}>{item.title}</Text><Text style={styles.alertBody}>{item.body}</Text><Text style={styles.time}>{item.receivedAt}</Text>
             </View>
@@ -102,7 +126,8 @@ const styles = StyleSheet.create({
   cardLabel: { color: "#8fa4c1", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
   status: { color: "#f0f5ff", fontSize: 16, fontWeight: "700" },
   hint: { color: "#a8b6cb", lineHeight: 20, fontSize: 13 },
-  token: { color: "#8fe0b7", fontSize: 11 },
+  tokenLabel: { color: "#8fa4c1", fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+  token: { color: "#8fe0b7", fontSize: 11, lineHeight: 17 },
   alert: { paddingTop: 10, borderTopColor: "#26364e", borderTopWidth: 1, gap: 4 },
   alertTitle: { color: "#f0f5ff", fontWeight: "700" },
   alertBody: { color: "#a8b6cb" },

@@ -7,7 +7,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "android": {"package": "com.algoguardian.alerts"},
+    "android": {
+      "package": "com.algoguardian.alerts",
+      "googleServicesFile": "./google-services.json"
+    },
     "plugins": ["expo-notifications"]
   }
 }
