@@ -17,6 +17,25 @@ from services.experiment_journal import (
 
 SIGNALS_FILE = Path(__file__).resolve().parents[1] / "storage" / "signals.json"
 
+# Prevent the five-second runner from repeatedly alerting for the same blocked setup.
+_NOTIFIED_SETTINGS_REJECTIONS = set()
+_MAX_REJECTION_KEYS = 200
+
+
+def _settings_rejection(reason):
+    text = str(reason or "").upper()
+    markers = (
+        "RISK MANAGER BLOCKED THE ORDER:",
+        "MAX OPEN POSITIONS:",
+        "STOP LOSS AND TAKE PROFIT MUST BE POSITIVE SETTINGS VALUES",
+        "CONFIGURED STOP LOSS/TAKE PROFIT IS BELOW BROKER MINIMUM",
+        "LOT SIZE CAP MUST BE GREATER THAN ZERO",
+        "CALCULATED VOLUME IS BELOW BROKER MINIMUM",
+        "REQUESTED VOLUME",
+        "VOLUME COULD NOT BE NORMALIZED TO BROKER STEP",
+    )
+    return any(marker in text for marker in markers)
+
 
 def save_signal(signal):
     SIGNALS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +112,13 @@ def run_bot():
                         reason = getattr(execution_engine, "last_error", None) or "Order was rejected; inspect the MT5 retcode and broker comment in the logs."
                         signal["execution_reason"] = reason
                         signal["fix"] = getattr(execution_engine, "last_fix", None) or "Use the rejection details to correct the relevant Settings value, account condition, or MT5 connection issue. Do not increase risk just to force an order."
+                        if _settings_rejection(reason):
+                            rejection_key = (str(signal.get("symbol") or signal.get("pair") or ""), str(signal.get("signal") or signal.get("type") or signal.get("direction") or ""), reason)
+                            if rejection_key not in _NOTIFIED_SETTINGS_REJECTIONS:
+                                if len(_NOTIFIED_SETTINGS_REJECTIONS) >= _MAX_REJECTION_KEYS:
+                                    _NOTIFIED_SETTINGS_REJECTIONS.clear()
+                                _NOTIFIED_SETTINGS_REJECTIONS.add(rejection_key)
+                                send_push("order_rejected_settings")
                     print("EXECUTION RESULT:", result)
                     record_execution(cycle_id, signal, result)
                     if result:
