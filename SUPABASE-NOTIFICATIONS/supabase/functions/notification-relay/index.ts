@@ -11,11 +11,7 @@ const EVENTS: Record<string, string> = {
   engine_stopped: "AlgoGuardian trading engine was stopped or paused.",
   trade_opened: "A trade was opened by your local trading engine.",
   trade_closed: "A trade was closed by your local trading engine.",
-  risk_limit_reached: "A configured risk limit was reached.",
-  daily_trade_limit_reached: "The daily trade limit was reached.",
-  mt5_disconnected: "The MT5 connection was lost.",
-  mt5_reconnected: "The MT5 connection was restored.",
-  notification_error: "The trading engine needs attention.",
+  order_rejected_settings: "An order was blocked by AlgoGuardian settings or risk rules.",
 };
 const encoder = new TextEncoder();
 
