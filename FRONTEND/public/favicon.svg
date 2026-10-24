@@ -1,17 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff3b0"/><stop offset=".3" stop-color="#f7d66f"/><stop offset=".62" stop-color="#c88a20"/><stop offset="1" stop-color="#fff0a0"/></linearGradient>
-    <linearGradient id="darkgold" x1="0" y1="0" x2="0.9" y2="1"><stop stop-color="#f8dc7b"/><stop offset="1" stop-color="#85530e"/></linearGradient>
-  </defs>
-  <rect width="128" height="128" rx="26" fill="#070707"/>
-  <circle cx="64" cy="64" r="56" fill="none" stroke="url(#gold)" stroke-width="2.5"/>
-  <circle cx="64" cy="64" r="50" fill="none" stroke="#c18b28" stroke-opacity=".24"/>
-  <path d="M17 99 51 22 65 45 51 54 39 43 25 91Z" fill="url(#gold)" stroke="#fff0ad" stroke-width="1.2" stroke-linejoin="round"/>
-  <path d="M64 40 78 20 75 42 97 31 89 49 111 47 96 61 80 64 70 57Z" fill="url(#gold)" stroke="#fff0ad" stroke-width="1.2" stroke-linejoin="round"/>
-  <path d="M73 55 87 59 102 76 94 93 77 91 69 81 62 68Z" fill="url(#darkgold)" stroke="#f6d66c" stroke-width="1.2" stroke-linejoin="round"/>
-  <path d="M81 68 92 70 99 77 88 76Z" fill="#080808"/>
-  <path d="M82 69 90 71 86 74Z" fill="#fff3b4"/>
-  <path d="M70 82 81 87 96 87 89 97 72 96 62 90Z" fill="url(#gold)" stroke="#f6d66c" stroke-width="1"/>
-  <path d="M61 69 48 78 34 98 49 94 66 81Z" fill="url(#darkgold)" stroke="#e8bd53" stroke-width="1"/>
-  <path d="M15 105H113" stroke="url(#gold)" stroke-width="1.4" opacity=".8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff1a6"/><stop offset=".45" stop-color="#f5bd35"/><stop offset="1" stop-color="#9c5b08"/></linearGradient></defs>
+  <rect width="64" height="64" rx="13" fill="#050505"/>
+  <circle cx="32" cy="32" r="27" fill="none" stroke="url(#g)" stroke-width="1.5"/>
+  <path d="M9 48 29 12 39 29 32 34 28 26 17 46H9Z" fill="url(#g)" stroke="#ffe7a0" stroke-width=".7"/>
+  <path d="M36 18 43 10 41 22 49 18 46 27 54 26 48 33 43 34 39 30 34 27 36 18Z" fill="url(#g)" stroke="#ffe7a0" stroke-width=".7" stroke-linejoin="round"/>
+  <path d="M36 33 45 35 51 42 43 41 38 38 34 40 31 36Z" fill="url(#g)"/>
 </svg>
