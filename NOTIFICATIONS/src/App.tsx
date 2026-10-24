@@ -4,6 +4,7 @@ import {
   StyleSheet, Text, TextInput, Pressable, View
 } from "react-native";
 import * as Notifications from "expo-notifications";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
 
@@ -18,27 +19,24 @@ Notifications.setNotificationHandler({
 
 type AlertItem = { title: string; body: string; receivedAt: string };
 const URL_KEY = "algoguardian_local_backend_url";
-const SECRET_KEY = "algoguardian_pairing_secret";
 
 export default function App() {
   const [permission, setPermission] = useState("Checking");
   const [fcmToken, setFcmToken] = useState("");
   const [backendUrl, setBackendUrl] = useState("");
-  const [pairingSecret, setPairingSecret] = useState("");
   const [registration, setRegistration] = useState("Not paired");
   const [busy, setBusy] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [latest, setLatest] = useState<AlertItem[]>([]);
 
   useEffect(() => {
     let mounted = true;
     const setup = async () => {
-      const [savedUrl, savedSecret] = await Promise.all([
-        SecureStore.getItemAsync(URL_KEY),
-        SecureStore.getItemAsync(SECRET_KEY)
-      ]);
+      const savedUrl = await SecureStore.getItemAsync(URL_KEY);
       if (mounted) {
         if (savedUrl) setBackendUrl(savedUrl);
-        if (savedSecret) setPairingSecret(savedSecret);
       }
 
       if (!Device.isDevice) {
@@ -98,49 +96,65 @@ export default function App() {
 
   const normalizedUrl = () => backendUrl.trim().replace(/\/+$/, "");
 
-  const pairDevice = async () => {
-    const url = normalizedUrl();
-    const secret = pairingSecret.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      Alert.alert("Backend address required", "Enter the Windows PC's reachable backend URL, including http:// or https://.");
+  const openScanner = async () => {
+    if (!cameraPermission?.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) {
+        Alert.alert("Camera permission needed", "Allow camera access to scan the one-time QR code displayed by your Windows PC.");
+        return;
+      }
+    }
+    setScanned(false);
+    setShowScanner(true);
+  };
+
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (scanned || busy) return;
+    setScanned(true);
+    let pairing: { type?: string; backendUrl?: string; code?: string };
+    try {
+      pairing = JSON.parse(data);
+    } catch {
+      setShowScanner(false);
+      Alert.alert("Invalid QR code", "Scan the one-time AlgoGuardian pairing QR displayed in your Windows dashboard.");
       return;
     }
-    if (secret.length < 32) {
-      Alert.alert("Pairing secret required", "Enter the unique pairing secret configured in the Windows backend .env (at least 32 characters).");
+    const url = (pairing.backendUrl || "").trim().replace(/\/+$/, "");
+    if (pairing.type !== "algoguardian-pair" || !/^https?:\/\//i.test(url) || !pairing.code) {
+      setShowScanner(false);
+      Alert.alert("Invalid QR code", "This QR code is not an AlgoGuardian phone-pairing code.");
       return;
     }
     if (!fcmToken) {
-      Alert.alert("Push token not ready", "Wait for the FCM device token to finish registering, then try again.");
+      setShowScanner(false);
+      Alert.alert("Push token not ready", "Wait for Firebase to finish registering this phone, then scan again.");
       return;
     }
 
     setBusy(true);
-    setRegistration("Pairing with this Windows installation…");
+    setRegistration("Pairing with your Windows PC…");
     try {
-      const response = await fetch(url + "/api/notifications/devices", {
+      const response = await fetch(url + "/api/notifications/pair/claim", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Notification-Pairing-Secret": secret
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          code: pairing.code,
           token: fcmToken,
           device_name: Device.deviceName || "Android phone"
         })
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.detail || "Pairing failed (HTTP " + response.status + ").");
-      await Promise.all([
-        SecureStore.setItemAsync(URL_KEY, url),
-        SecureStore.setItemAsync(SECRET_KEY, secret)
-      ]);
+      await SecureStore.setItemAsync(URL_KEY, url);
       setBackendUrl(url);
-      setRegistration("Paired with this Windows installation");
-      Alert.alert("Phone paired", "This phone is registered for alerts from the Windows installation you selected.");
+      setRegistration("Paired with your Windows installation");
+      setShowScanner(false);
+      Alert.alert("Phone paired", "This phone will receive alerts from the Windows installation you scanned.");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Could not reach the Windows backend.";
       setRegistration("Pairing failed");
-      Alert.alert("Could not pair phone", detail + "\n\nMake sure the PC and phone can reach each other and the backend is running.");
+      setShowScanner(false);
+      Alert.alert("Could not pair phone", detail + "\n\nMake sure both devices are on the same trusted Wi-Fi network and the Windows backend is running.");
     } finally {
       setBusy(false);
     }
@@ -148,31 +162,25 @@ export default function App() {
 
   const unpairDevice = async () => {
     const url = normalizedUrl();
-    const secret = pairingSecret.trim();
-    if (!url || !secret || !fcmToken) {
-      await Promise.all([SecureStore.deleteItemAsync(URL_KEY), SecureStore.deleteItemAsync(SECRET_KEY)]);
+    if (!url || !fcmToken) {
+      await SecureStore.deleteItemAsync(URL_KEY);
       setBackendUrl("");
-      setPairingSecret("");
-      setRegistration("Pairing details cleared; remove this phone from the Windows registry if it was previously paired.");
+      setRegistration("Pairing details cleared. If the PC is offline, remove the old device from that installation when it is available.");
       return;
     }
     setBusy(true);
     try {
-      const response = await fetch(url + "/api/notifications/devices", {
+      const response = await fetch(url + "/api/notifications/pair/unpair", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Notification-Pairing-Secret": secret
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: fcmToken })
       });
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
         throw new Error(result.detail || "Unpair request failed.");
       }
-      await Promise.all([SecureStore.deleteItemAsync(URL_KEY), SecureStore.deleteItemAsync(SECRET_KEY)]);
+      await SecureStore.deleteItemAsync(URL_KEY);
       setBackendUrl("");
-      setPairingSecret("");
       setRegistration("Phone unpaired");
     } catch (error) {
       Alert.alert("Could not unpair phone", error instanceof Error ? error.message : "Try again when the Windows PC is reachable.");
@@ -201,33 +209,25 @@ export default function App() {
         </View>
         <View style={styles.card}>
           <Text style={styles.cardLabel}>PAIR WITH YOUR WINDOWS PC</Text>
-          <Text style={styles.fieldLabel}>Backend URL</Text>
-          <TextInput
-            value={backendUrl}
-            onChangeText={setBackendUrl}
-            placeholder="http://192.168.1.20:8000"
-            placeholderTextColor="#72849d"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            style={styles.input}
-          />
-          <Text style={styles.fieldLabel}>Installation pairing secret</Text>
-          <TextInput
-            value={pairingSecret}
-            onChangeText={setPairingSecret}
-            placeholder="Paste the secret from your private backend .env"
-            placeholderTextColor="#72849d"
-            autoCapitalize="none"
-            autoCorrect={false}
-            secureTextEntry
-            style={styles.input}
-          />
-          <Text style={styles.hint}>The pairing secret must be unique to your installation and at least 32 characters. Pair while the phone can reach the Windows PC.</Text>
+          <Text style={styles.hint}>On your Windows dashboard, open Broker Accounts and generate a one-time pairing QR. Scan it here while both devices are on the same trusted Wi-Fi network.</Text>
           <Text style={styles.registration}>{registration}</Text>
-          <Pressable style={[styles.primaryButton, (busy || !fcmToken) && styles.disabledButton]} onPress={pairDevice} disabled={busy || !fcmToken}>
-            {busy ? <ActivityIndicator color="#092319" /> : <Text style={styles.primaryButtonText}>Pair this phone</Text>}
+          <Pressable style={[styles.primaryButton, (busy || !fcmToken) && styles.disabledButton]} onPress={() => void openScanner()} disabled={busy || !fcmToken}>
+            {busy ? <ActivityIndicator color="#092319" /> : <Text style={styles.primaryButtonText}>Scan pairing QR code</Text>}
           </Pressable>
+          {showScanner && (
+            <View style={styles.scanner}>
+              <CameraView
+                style={styles.camera}
+                facing="back"
+                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+              />
+              <Text style={styles.hint}>Point your camera at the QR code on the Windows dashboard.</Text>
+              <Pressable style={styles.secondaryButton} onPress={() => setShowScanner(false)}>
+                <Text style={styles.secondaryButtonText}>Cancel scan</Text>
+              </Pressable>
+            </View>
+          )}
           <Pressable style={[styles.secondaryButton, busy && styles.disabledButton]} onPress={unpairDevice} disabled={busy}>
             <Text style={styles.secondaryButtonText}>Unpair this phone</Text>
           </Pressable>
@@ -274,5 +274,7 @@ const styles = StyleSheet.create({
   alertTitle: { color: "#f0f5ff", fontWeight: "700" },
   alertBody: { color: "#a8b6cb" },
   time: { color: "#72849d", fontSize: 11 },
+  scanner: { gap: 10, marginTop: 8 },
+  camera: { width: "100%", height: 320, borderRadius: 12, overflow: "hidden" },
   footer: { color: "#72849d", fontSize: 12, lineHeight: 18, paddingBottom: 20 }
 });
