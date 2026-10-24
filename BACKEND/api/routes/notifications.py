@@ -2,6 +2,7 @@
 import base64
 import io
 import json
+import socket
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -31,7 +32,21 @@ class DeviceRemoval(BaseModel):
 @router.post("/pairing-session")
 def create_pairing_session(request: Request, _user: dict = Depends(require_authenticated_user)):
     """Create a short-lived code for a QR displayed by the signed-in Windows dashboard."""
-    pairing = create_code(str(request.base_url).rstrip("/"))
+    base_url = str(request.base_url).rstrip("/")
+    hostname = request.url.hostname or ""
+    if hostname.lower() in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}:
+        try:
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                probe.connect(("8.8.8.8", 80))
+                hostname = probe.getsockname()[0]
+            finally:
+                probe.close()
+            base_url = f"{request.url.scheme}://{hostname}:{request.url.port or 8000}"
+        except OSError:
+            # Keep the configured host if local interface discovery is unavailable.
+            pass
+    pairing = create_code(base_url)
     payload = json.dumps({
         "type": "algoguardian-pair",
         "backendUrl": pairing["backend_url"],
