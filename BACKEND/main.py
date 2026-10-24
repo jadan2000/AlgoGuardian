@@ -35,7 +35,11 @@ async def lifespan(app: FastAPI):
     bot_thread = Thread(target=run_bot, name="trading-bot-runner", daemon=True)
     bot_thread.start()
     print("BOT RUNNER STARTED")
+    if os.getenv("NOTIFICATION_RELAY_URL", "").strip():
+        start_remote_monitoring()
+        print("REMOTE MONITORING RELAY STARTED")
     yield
+    stop_remote_monitoring()
 
 
 app = FastAPI(title="Trading Backend", lifespan=lifespan)
