@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator, Alert, SafeAreaView, ScrollView, StatusBar,
-  StyleSheet, Text, TextInput, Pressable, View
+  StyleSheet, Text, Pressable, View
 } from "react-native";
 import * as Notifications from "expo-notifications";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -262,8 +262,6 @@ const styles = StyleSheet.create({
   cardLabel: { color: "#8fa4c1", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
   status: { color: "#f0f5ff", fontSize: 16, fontWeight: "700" },
   hint: { color: "#a8b6cb", lineHeight: 20, fontSize: 13 },
-  fieldLabel: { color: "#c7d3e4", fontSize: 12, fontWeight: "700", marginTop: 4 },
-  input: { color: "#f0f5ff", backgroundColor: "#0b1220", borderColor: "#354761", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 13 },
   registration: { color: "#8fe0b7", fontSize: 12, fontWeight: "700" },
   primaryButton: { backgroundColor: "#8fe0b7", borderRadius: 10, padding: 14, alignItems: "center", justifyContent: "center", minHeight: 48 },
   primaryButtonText: { color: "#092319", fontWeight: "900" },
