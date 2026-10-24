@@ -4,30 +4,32 @@ import threading
 from services.notification_devices import registered_tokens
 from services.notification_relay import NotificationRelayError, send_remote_notification
 
-_EVENT_TITLES = {
-    "engine_started": "AlgoGuardian started",
-    "engine_stopped": "AlgoGuardian stopped",
-    "trade_opened": "Trade opened",
-    "trade_closed": "Trade closed",
-    "risk_limit_reached": "Risk limit reached",
-    "daily_trade_limit_reached": "Daily trade limit reached",
-    "mt5_disconnected": "MT5 connection lost",
-    "mt5_reconnected": "MT5 reconnected",
-    "notification_error": "AlgoGuardian needs attention",
+_EVENT_MESSAGES = {
+    "engine_started": "AlgoGuardian trading engine was started.",
+    "engine_stopped": "AlgoGuardian trading engine was stopped or paused.",
+    "trade_opened": "A trade was opened by your local trading engine.",
+    "trade_closed": "A trade was closed by your local trading engine.",
+    "risk_limit_reached": "A configured risk limit was reached.",
+    "daily_trade_limit_reached": "The daily trade limit was reached.",
+    "mt5_disconnected": "The MT5 connection was lost.",
+    "mt5_reconnected": "The MT5 connection was restored.",
+    "notification_error": "The trading engine needs attention.",
 }
 
 
-def _send(event: str, message: str) -> None:
+def _send(event: str) -> None:
     try:
-        send_remote_notification(event, message[:240])
+        # Only fixed generic messages leave the PC; never forward symbols,
+        # order tickets, prices, strategy details, or caller-provided text.
+        send_remote_notification(event, _EVENT_MESSAGES[event])
     except NotificationRelayError as exc:
         # Push failures are deliberately isolated from the trading loop.
         print(f"[FCM relay] Notification send failed: {exc}")
 
 
-def send_push(event: str, message: str) -> None:
-    """Send a notification asynchronously; failure never blocks trade execution."""
-    if event not in _EVENT_TITLES:
+def send_push(event: str, _message: str = "") -> None:
+    """Send a generic event asynchronously; ignore potentially sensitive caller text."""
+    if event not in _EVENT_MESSAGES:
         print(f"[FCM relay] Ignoring unknown notification event: {event}")
         return
     try:
@@ -38,7 +40,7 @@ def send_push(event: str, message: str) -> None:
         return
     threading.Thread(
         target=_send,
-        args=(event, message),
+        args=(event,),
         name="firebase-notification-relay",
         daemon=True,
     ).start()
