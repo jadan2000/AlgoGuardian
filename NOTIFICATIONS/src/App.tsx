@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, RefreshControl,
-  SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View
+  SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View
 } from "react-native";
 import * as Notifications from "expo-notifications";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -262,7 +262,7 @@ export default function App() {
     return <View style={styles.tradeRow} key={String(ticket) + "-" + index}>
       <View style={[styles.sidePill, { backgroundColor: isBuy ? "#163D32" : "#42272D" }]}><Text style={{ color: isBuy ? C.green : C.red, fontWeight: "800", fontSize: 10 }}>{isBuy ? "BUY" : "SELL"}</Text></View>
       <View style={styles.tradeMain}><Text style={styles.tradeSymbol}>{trade.symbol || "—"}</Text><Text style={styles.tradeMeta}>{num(trade.volume, 2)} lots · Entry {num(trade.entry_price, 5)}</Text></View>
-      <View style={styles.tradeRight}><Text style={[styles.tradeProfit, { color: profit >= 0 ? C.green : C.red }]}>{money(profit)}</Text>{closable ? <Pressable onPress={() => closePosition(trade)} disabled={actionBusy} style={styles.closeSmall}><Text style={styles.closeSmallText}>CLOSE</Text></Pressable> : null}</View>
+      <View style={styles.tradeRight}><Text style={[styles.tradeProfit, { color: profit >= 0 ? C.green : C.red }]}>{money(profit)}</Text></View>
     </View>;
   };
 
