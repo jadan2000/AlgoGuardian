@@ -24,7 +24,7 @@ Android notification-only companion built with Expo + React Native and Firebase 
 3. In the private `BACKEND/.env`, set:
    - `GOOGLE_APPLICATION_CREDENTIALS=C:/secure/path/firebase-admin.json` (use the real path to your private service-account file).
    - `FIREBASE_NOTIFICATION_DEVICE_TOKENS=FCM_TOKEN_1,FCM_TOKEN_2` (paste the FCM token shown by each registered phone; multiple tokens are comma-separated).
-4. Restart the backend. The backend sender helper can deliver best-effort push alerts without blocking trading or order execution.
+4. Restart the backend. The backend sends best-effort push alerts when the bot starts, pauses, or is stopped by the kill switch; when an automated order succeeds; and when a trade is manually closed. Push sends run asynchronously so notification failures do not block trading or order execution.
 
 ## Security and limitations
 
