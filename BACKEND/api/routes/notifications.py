@@ -1,19 +1,21 @@
-"""Pair and manage phone notifications for this local Windows installation."""
-import hmac
-import os
-
-from fastapi import APIRouter, Header, HTTPException
+"""Secure QR-based phone pairing for one local AlgoGuardian installation."""
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from api.auth import require_authenticated_user
 from services.notification_devices import (
-    NotificationRegistryError, list_devices, pairing_secret_configured,
-    register_device, remove_device,
+    NotificationRegistryError, list_devices, register_device, remove_device,
+)
+from services.notification_pairing import consume_code, create_code
+from services.notification_relay import (
+    NotificationRelayError, ensure_registered, register_remote_device, remove_remote_device,
 )
 
 router = APIRouter()
 
 
-class DeviceRegistration(BaseModel):
+class PairClaim(BaseModel):
+    code: str = Field(min_length=8, max_length=128)
     token: str = Field(min_length=20, max_length=4096)
     device_name: str = Field(default="Android device", min_length=1, max_length=120)
 
@@ -22,45 +24,55 @@ class DeviceRemoval(BaseModel):
     token: str = Field(min_length=20, max_length=4096)
 
 
-def _require_pairing_secret(supplied: str | None) -> None:
-    expected = (os.getenv("NOTIFICATION_PAIRING_SECRET") or "").strip()
-    if len(expected) < 32:
-        raise HTTPException(status_code=503, detail="Phone pairing is not configured. Set a long random NOTIFICATION_PAIRING_SECRET in the private backend .env.")
-    if not supplied or not hmac.compare_digest(supplied, expected):
-        raise HTTPException(status_code=401, detail="Phone pairing code is invalid.")
+@router.post("/pairing-session")
+def create_pairing_session(request: Request, _user: dict = Depends(require_authenticated_user)):
+    """Create a short-lived code for a QR displayed by the signed-in Windows dashboard."""
+    return create_code(str(request.base_url).rstrip("/"))
 
 
-@router.get("/status")
-def notification_status():
-    if not pairing_secret_configured():
-        return {"configured": False, "paired_devices": 0}
+@router.post("/pair/claim")
+def claim_pairing(payload: PairClaim):
+    """Claim a one-time code; the code is consumed before remote calls to prevent replay."""
+    pairing = consume_code(payload.code)
+    if not pairing:
+        raise HTTPException(status_code=401, detail="This QR pairing code expired or has already been used. Generate a new QR code on Windows.")
     try:
-        return {"configured": True, "paired_devices": len(list_devices())}
-    except NotificationRegistryError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-
-@router.get("/devices")
-def get_devices(x_notification_pairing_secret: str | None = Header(default=None)):
-    _require_pairing_secret(x_notification_pairing_secret)
-    return {"devices": list_devices()}
-
-
-@router.post("/devices")
-def add_device(payload: DeviceRegistration, x_notification_pairing_secret: str | None = Header(default=None)):
-    _require_pairing_secret(x_notification_pairing_secret)
-    try:
-        return register_device(payload.token, payload.device_name)
+        ensure_registered()
+        register_remote_device(payload.token, payload.device_name)
+        result = register_device(payload.token, payload.device_name)
+        return {"paired": True, **result}
+    except NotificationRelayError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except NotificationRegistryError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Could not save the paired device on this PC.") from exc
 
 
-@router.delete("/devices")
-def delete_device(payload: DeviceRemoval, x_notification_pairing_secret: str | None = Header(default=None)):
-    _require_pairing_secret(x_notification_pairing_secret)
+@router.delete("/pair/unpair")
+def unpair_device(payload: DeviceRemoval):
+    """Remove the caller's current FCM token from this installation and the relay."""
+    try:
+        remove_remote_device(payload.token)
+    except NotificationRelayError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     try:
         return {"removed": remove_device(payload.token)}
     except NotificationRegistryError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Could not update this PC's paired-device registry.") from exc
+
+
+@router.get("/status")
+def notification_status(_user: dict = Depends(require_authenticated_user)):
+    try:
+        return {"configured": True, "paired_devices": len(list_devices())}
+    except NotificationRegistryError as exc:
+        raise HTTPException(status_code=500, detail="Notification registry is unreadable.") from exc
+
+
+@router.get("/devices")
+def get_devices(_user: dict = Depends(require_authenticated_user)):
+    try:
+        return {"devices": list_devices()}
+    except NotificationRegistryError as exc:
+        raise HTTPException(status_code=500, detail="Notification registry is unreadable.") from exc
