@@ -1,8 +1,9 @@
 {
-  "risk_per_trade": 0.5,
-  "max_daily_loss": 2,
-  "max_drawdown": 5,
+  "risk_per_trade": 0.0,
+  "max_daily_loss": 0.0,
+  "max_drawdown": 0.0,
   "max_trades_per_day": 8,
+  "max_trades_enabled": false,
   "entry_ema_filter": false,
   "trend_filter": false,
   "adx_filter": false,
@@ -14,9 +15,9 @@
   "ema_fast": 9,
   "ema_slow": 21,
   "entry_ema": 9,
-  "adx_threshold": 18,
+  "adx_threshold": 18.0,
   "atr_ratio": 0.65,
-  "atr_extension": 1.5,
+  "atr_extension": 0.5,
   "momentum_multiplier": 1.1,
   "momentum_min_body_atr": 0.18,
   "momentum_close_location": 0.58,
@@ -35,11 +36,9 @@
   "allow_london": false,
   "allow_ny": false,
   "allow_asia": false,
-  "demo_mode": false,
+  "demo_mode": true,
   "lot_size": 0.01,
   "deviation": 20,
   "magic": 20250620,
-  "order_comment": "AlgoGuardian",
-  "max_trades_enabled": false,
-  "is_active": false
+  "order_comment": "AlgoGuardian"
 }
