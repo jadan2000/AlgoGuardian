@@ -6,3 +6,4 @@ pandas
 ta
 MetaTrader5
 cryptography
+firebase-admin
