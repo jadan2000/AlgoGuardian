@@ -217,7 +217,8 @@ export default function App() {
 
   const unpairDevice = async () => {
     if (!relayUrl || !installationId || !fcmToken) {
-      await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY);\n      await SecureStore.deleteItemAsync(PHONE_SECRET_KEY);
+      await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY); await SecureStore.deleteItemAsync(PHONE_SECRET_KEY);
+      await SecureStore.deleteItemAsync(PHONE_SECRET_KEY);
       setRelayUrl(""); setInstallationId(""); setRegistration("Pairing details cleared."); return;
     }
     Alert.alert("Unpair this phone?", "This removes the saved pairing details from this app.", [
@@ -302,7 +303,6 @@ export default function App() {
             <View style={styles.controlRow}>
               <Pressable style={[styles.controlButton, styles.startButton]} onPress={() => runBotAction("start")} disabled={actionBusy}><Text style={styles.startText}>{actionBusy ? "PLEASE WAIT…" : "▶  START"}</Text></Pressable>
               <Pressable style={styles.controlButton} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={styles.controlText}>Ⅱ  PAUSE</Text></Pressable>
-              <Pressable style={[styles.controlButton, styles.stopButton]} onPress={() => runBotAction("pause")} disabled={actionBusy}><Text style={styles.stopText}>■  STOP</Text></Pressable>
             </View>
           </View>
           <View style={styles.card}>{cardTitle("OPEN POSITIONS", String(positions.length))}
