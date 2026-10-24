@@ -146,6 +146,37 @@ Deno.serve(async (request) => {
       return json({ removed: next.length !== tokens.length });
     } catch { return json({ error: "Unpair relay temporarily unavailable." }, 503); }
   }
+  // Phone access uses a separate revocable secret, never the Windows installation secret.
+  if (action === "get_snapshot" || action === "enqueue_command") {
+    if (!validUuid(body.installation_id) || typeof body.phone_secret !== "string" ||
+        body.phone_secret.length < 40 || body.phone_secret.length > 256) return json({ error: "Unauthorized phone." }, 401);
+    try {
+      const db = serviceClient();
+      const { data: installation, error } = await db.from("notification_installations")
+        .select("installation_id,device_tokens,latest_snapshot,last_seen_at")
+        .eq("installation_id", body.installation_id).maybeSingle();
+      if (error || !installation) return json({ error: "Installation not found." }, 404);
+      const phoneHash = await sha256(body.phone_secret);
+      const device = parseTokens(installation.device_tokens).find((item) => item.phone_secret_hash === phoneHash);
+      if (!device) return json({ error: "Phone access was revoked or is invalid." }, 401);
+      if (action === "get_snapshot") {
+        return json({ snapshot: installation.latest_snapshot, last_seen_at: installation.last_seen_at });
+      }
+      if (body.command !== "start" && body.command !== "pause") return json({ error: "Only start and pause are supported." }, 400);
+      const now = new Date().toISOString();
+      await db.from("installation_commands").update({ status: "expired" })
+        .eq("installation_id", body.installation_id).in("status", ["pending", "claimed"]).lte("expires_at", now);
+      const { count } = await db.from("installation_commands").select("id", { count: "exact", head: true })
+        .eq("installation_id", body.installation_id).in("status", ["pending", "claimed"]).gt("expires_at", now);
+      if ((count ?? 0) >= 3) return json({ error: "A command is already pending. Wait for it to finish." }, 429);
+      const { data: command, error: insertError } = await db.from("installation_commands")
+        .insert({ installation_id: body.installation_id, action: body.command, expires_at: new Date(Date.now() + 90000).toISOString() })
+        .select("id,action,status,expires_at").single();
+      if (insertError || !command) return json({ error: "Could not queue command." }, 503);
+      return json({ queued: true, command });
+    } catch { return json({ error: "Remote control relay unavailable." }, 503); }
+  }
+
   if (action === "register_installation") {
     if (!validUuid(body.installation_id) || typeof body.installation_secret !== "string" ||
         body.installation_secret.length < 40 || body.installation_secret.length > 256) return json({ error: "Invalid installation identity." }, 400);
