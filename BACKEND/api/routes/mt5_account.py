@@ -1,6 +1,4 @@
-"""Authenticated management endpoints for the owner's single MT5 account."""
-import os
-
+"""Authenticated management endpoints for the local MT5 account."""
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -10,19 +8,9 @@ from services.mt5_service import MT5Service
 from services.mt5_terminal_path import save_terminal_path, terminal_path_status
 
 
-def require_mt5_admin(user: dict = Depends(require_authenticated_user)) -> dict:
-    admin_email = (os.getenv("MT5_ACCOUNT_ADMIN_EMAIL") or "").strip().casefold()
-    admin_user_id = (os.getenv("MT5_ACCOUNT_ADMIN_USER_ID") or "").strip()
-    if not admin_email and not admin_user_id:
-        raise HTTPException(status_code=503, detail="Set MT5_ACCOUNT_ADMIN_EMAIL or MT5_ACCOUNT_ADMIN_USER_ID in the backend environment before managing broker credentials.")
-    if admin_email and str(user.get("email") or "").casefold() == admin_email:
-        return user
-    if admin_user_id and str(user.get("id") or "") == admin_user_id:
-        return user
-    raise HTTPException(status_code=403, detail="You are not authorized to manage this broker account.")
-
-
-router = APIRouter(dependencies=[Depends(require_mt5_admin)])
+# Each local AlgoGuardian installation manages the MT5 account configured on that
+# machine. Require a verified signed-in session, not a developer-maintained allowlist.
+router = APIRouter(dependencies=[Depends(require_authenticated_user)])
 
 
 class MT5TerminalPathInput(BaseModel):
