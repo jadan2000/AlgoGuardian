@@ -136,7 +136,9 @@ export default function AccountsPage() {
     }
   };
 
-  const busy = saving || savingTerminalPath || action !== null;\n
+  const busy = saving || savingTerminalPath || action !== null;
+
+  \n
   const saveTerminalPath = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSavingTerminalPath(true);
