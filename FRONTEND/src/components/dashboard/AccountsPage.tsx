@@ -203,6 +203,28 @@ export default function AccountsPage() {
         </div>
       </Card>
 
+      <Card className="p-5 sm:p-6">
+        <div className="mb-4 flex items-start gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary"><Server className="h-5 w-5" /></div>
+          <div>
+            <h2 className="font-semibold">MetaTrader 5 installation location</h2>
+            <p className="mt-1 text-sm text-muted-foreground">AlgoGuardian checks common installation folders automatically. If MT5 is installed elsewhere, enter the full path to its terminal executable.</p>
+          </div>
+        </div>
+        <form onSubmit={saveTerminalPath} className="space-y-3">
+          <label className="block space-y-2 text-sm font-medium">Terminal executable path
+            <input required value={terminalPath} onChange={event => setTerminalPath(event.target.value)} placeholder={String.raw`C:\Program Files\MetaTrader 5\terminal64.exe`} spellCheck={false} className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-mono text-sm font-normal outline-none focus:ring-2 focus:ring-ring" />
+          </label>
+          <p className="text-xs text-muted-foreground">{status?.terminal?.detected ? `Current location: ${status.terminal.source === "saved" ? "saved path" : "automatically detected"}` : "No MT5 installation was detected yet. Install MT5 or enter its executable path."}</p>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={busy || !terminalPath.trim()}>
+              {savingTerminalPath ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Server className="mr-2 h-4 w-4" />}
+              {savingTerminalPath ? "Validating…" : "Save terminal location"}
+            </Button>
+          </div>
+        </form>
+      </Card>
+
       {error && <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /><p>{error}</p></div>}
       {status?.connected && <div className="flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /><div><p className="font-semibold">Account connection verified</p><p className="mt-1 text-muted-foreground">{status.trade_allowed ? "The terminal reports trading is allowed for this account." : "The terminal is connected. Trading permission may be disabled in the terminal or broker account."}</p></div></div>}
 
