@@ -5,7 +5,8 @@ from services.notification_relay import NotificationRelayError, send_remote_noti
 
 _EVENT_MESSAGES = {
     "engine_started": "AlgoGuardian trading engine was started.",
-    "engine_stopped": "AlgoGuardian trading engine was stopped or paused.",
+    "engine_paused": "AlgoGuardian bot was paused.",
+    "kill_switch_activated": "AlgoGuardian kill switch was activated. Trading is disabled.",
     "trade_opened": "A trade was opened by your local trading engine.",
     "trade_closed": "A trade was closed by your local trading engine.",
     "order_rejected_settings": "An order was blocked by AlgoGuardian settings or risk rules.",
