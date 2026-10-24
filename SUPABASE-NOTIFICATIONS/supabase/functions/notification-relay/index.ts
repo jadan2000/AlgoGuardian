@@ -168,6 +168,18 @@ Deno.serve(async (request) => {
   try {
     const auth = await authenticate(body);
     if (!auth) return json({ error: "Unauthorized installation." }, 401);
+    if (action === "create_pairing") {
+      const code = crypto.randomUUID() + crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString();
+      const { error } = await auth.db.from("notification_pairing_sessions").insert({
+        code_hash: await sha256(code),
+        installation_id: auth.row.installation_id,
+        status: "pending",
+        expires_at: expiresAt,
+      });
+      if (error) return json({ error: "Could not create pairing code." }, 503);
+      return json({ code, expires_in_seconds: 180 });
+    }
     const tokens = parseTokens(auth.row.device_tokens);
     if (action === "register_device") {
       if (typeof body.token !== "string" || body.token.length < 20 || body.token.length > 4096 ||
