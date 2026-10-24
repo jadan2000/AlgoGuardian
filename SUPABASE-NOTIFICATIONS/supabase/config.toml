@@ -1,0 +1,4 @@
+project_id = "algoguardian-notifications"
+
+[functions.notification-relay]
+verify_jwt = false
