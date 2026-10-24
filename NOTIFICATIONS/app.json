@@ -9,7 +9,11 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.algoguardian.alerts",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       [
@@ -18,7 +22,14 @@
           "cameraPermission": "AlgoGuardian uses the camera to scan the one-time pairing QR code from your Windows PC."
         }
       ],
-      "expo-notifications"
-    ]
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6528a36e-796e-40e4-97cc-c94c944ea7c1"
+      }
+    }
   }
 }
