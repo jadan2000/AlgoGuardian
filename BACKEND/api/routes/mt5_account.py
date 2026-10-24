@@ -9,6 +9,7 @@ from services.mt5_credentials import CredentialStorageError, public_credentials,
 from services.mt5_service import MT5Service
 from services.mt5_terminal_path import save_terminal_path, terminal_path_status
 
+
 def require_mt5_admin(user: dict = Depends(require_authenticated_user)) -> dict:
     admin_email = (os.getenv("MT5_ACCOUNT_ADMIN_EMAIL") or "").strip().casefold()
     admin_user_id = (os.getenv("MT5_ACCOUNT_ADMIN_USER_ID") or "").strip()
@@ -59,14 +60,14 @@ def account_status():
 
 @router.post("/credentials")
 def update_credentials(payload: MT5CredentialsInput):
+    """Save encrypted credentials, refresh the MT5 session, and log into that account."""
     try:
         save_credentials(payload.login, payload.password, payload.server)
-        MT5Service.shutdown()
-        connected = MT5Service.connect()
+        connected = MT5Service.reconnect()
         status = _safe_status()
         status["connected"] = connected
-        if not connected:
-            status["reason"] = "Credentials saved, but MT5 could not connect. Check the account number, password, server and terminal availability."
+        if not connected and not status.get("reason"):
+            status["reason"] = "Credentials were saved securely, but MT5 could not connect. Check the account number, password, server and terminal installation."
         return status
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
