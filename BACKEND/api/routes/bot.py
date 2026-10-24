@@ -36,7 +36,7 @@ def start_bot():
 def pause_bot():
     bot_state.BOT_RUNNING = False
     bot_state.BOT_PAUSED = True
-    send_push("engine_stopped", "AlgoGuardian trading engine was paused.")
+    send_push("engine_paused")
     return {"success": True, "bot": "paused"}
 
 
@@ -45,7 +45,7 @@ def kill_bot():
     bot_state.BOT_RUNNING = False
     bot_state.BOT_PAUSED = True
     bot_state.KILL_SWITCH = True
-    send_push("engine_stopped", "AlgoGuardian was stopped by the kill switch.")
+    send_push("kill_switch_activated")
     return {"success": True, "bot": "killed"}
 
 
