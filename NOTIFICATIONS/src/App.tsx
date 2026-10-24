@@ -37,6 +37,7 @@ type HistoryTrade = {
 
 const URL_KEY = "algoguardian_notification_relay_url";
 const INSTALLATION_KEY = "algoguardian_notification_installation_id";
+const PHONE_SECRET_KEY = "algoguardian_phone_access_secret";
 const C = { bg: "#080D15", panel: "#111A27", panel2: "#162232", line: "#253448", green: "#8FE0B7", text: "#F1F5FC", muted: "#91A1B8", red: "#FF7777", amber: "#E9BE72" };
 
 function money(value?: number | string, currency = "USD") {
@@ -59,7 +60,8 @@ export default function App() {
   const [permission, setPermission] = useState("Checking notification permission…");
   const [fcmToken, setFcmToken] = useState("");
   const [relayUrl, setRelayUrl] = useState("");
-  const [installationId, setInstallationId] = useState("");\n  const [phoneSecret, setPhoneSecret] = useState("");
+  const [installationId, setInstallationId] = useState("");
+  const [phoneSecret, setPhoneSecret] = useState("");
   const [registration, setRegistration] = useState("Not paired");
   const [busy, setBusy] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -206,8 +208,10 @@ export default function App() {
       const id = result.installation_id || result.installationId;
       if (typeof id !== "string") throw new Error("The relay did not return an installation ID.");
       await SecureStore.setItemAsync(URL_KEY, url);
+      if (typeof result.phone_secret !== "string") throw new Error("Relay did not return phone access credentials. Deploy the updated relay and scan a fresh QR code.");
       await SecureStore.setItemAsync(INSTALLATION_KEY, id);
-      setRelayUrl(url); setInstallationId(id); setRegistration("Paired with your Windows installation");
+      await SecureStore.setItemAsync(PHONE_SECRET_KEY, result.phone_secret);
+      setRelayUrl(url); setInstallationId(id); setPhoneSecret(result.phone_secret); setRegistration("Paired with your Windows installation");
       setShowScanner(false); Alert.alert("Phone paired", "This phone is registered for AlgoGuardian alerts.");
     } catch (error) {
       setRegistration("Pairing failed"); setShowScanner(false);
@@ -228,8 +232,8 @@ export default function App() {
         try {
           const response = await fetch(relayUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "remove_device_public", installation_id: installationId, phone_secret: phoneSecret, token: fcmToken }) });
           if (!response.ok) throw new Error("Unpair request failed (HTTP " + response.status + ").");
-          await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY);
-          setRelayUrl(""); setInstallationId(""); setRegistration("Phone unpaired");
+          await SecureStore.deleteItemAsync(URL_KEY); await SecureStore.deleteItemAsync(INSTALLATION_KEY); await SecureStore.deleteItemAsync(PHONE_SECRET_KEY);
+          setRelayUrl(""); setInstallationId(""); setPhoneSecret(""); setRegistration("Phone unpaired");
         } catch (error) { Alert.alert("Could not unpair", error instanceof Error ? error.message : "Try again."); }
         finally { setBusy(false); }
       })(); } }
