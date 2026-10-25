@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Platform, Pressable, RefreshControl,
+  ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl,
   ScrollView, StatusBar, StyleSheet, Text, View
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -84,6 +84,8 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState("");
   const [apiError, setApiError] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+  const [confirmBotAction, setConfirmBotAction] = useState<"start" | "pause" | null>(null);
+  const [actionNotice, setActionNotice] = useState<{ title: string; message: string; kind: "success" | "error" } | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -250,28 +252,58 @@ export default function App() {
 
 
   const runBotAction = (action: "start" | "pause") => {
-    const isStart = action === "start";
-    Alert.alert(isStart ? "Start trading engine?" : "Pause trading engine?",
-      isStart ? "The Windows engine will validate its local MT5 connection and configuration before starting. Real trades may occur." :
-        "The engine will stop opening new trades. Existing positions remain open.",
-      [{ text: "Cancel", style: "cancel" }, { text: isStart ? "Start engine" : "Pause engine", onPress: () => { void (async () => {
-        if (!relayUrl || !installationId || !phoneSecret) {
-          Alert.alert("Phone not paired", "Pair this phone with your Windows installation first."); return;
-        }
-        setActionBusy(true);
-        try {
-          const response = await fetch(relayUrl, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "enqueue_command", installation_id: installationId, phone_secret: phoneSecret, command: action })
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "Could not queue command.");
-          Alert.alert("Command queued", "The Windows installation will validate and process the " + action + " request. Check engine status for confirmation.");
-          setTimeout(() => { void refreshDashboard(true); }, 3000);
-        } catch (error) {
-          Alert.alert("Command failed", error instanceof Error ? error.message : "Remote relay is unavailable.");
-        } finally { setActionBusy(false); }
-      })(); } }]);
+    if (actionBusy) return;
+    setActionNotice(null);
+    setConfirmBotAction(action);
+  };
+
+  const confirmBotActionRequest = async () => {
+    const action = confirmBotAction;
+    if (!action || actionBusy) return;
+    if (!relayUrl || !installationId || !phoneSecret) {
+      setConfirmBotAction(null);
+      setActionNotice({
+        title: "Phone not paired",
+        message: "Pair this phone with your Windows installation before sending engine commands.",
+        kind: "error",
+      });
+      return;
+    }
+
+    setActionBusy(true);
+    try {
+      const response = await fetch(relayUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "enqueue_command",
+          installation_id: installationId,
+          phone_secret: phoneSecret,
+          command: action,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not queue command.");
+
+      setConfirmBotAction(null);
+      setActionNotice({
+        title: action === "start" ? "Start request sent" : "Pause request sent",
+        message: action === "start"
+          ? "Your Windows PC will validate its MT5 connection and configuration before starting. This app will not report the engine as running until its status confirms it."
+          : "Your Windows PC will process the pause request. New trades should stop after it is handled; existing positions may remain open.",
+        kind: "success",
+      });
+      setTimeout(() => { void refreshDashboard(true); }, 3000);
+    } catch (error) {
+      setConfirmBotAction(null);
+      setActionNotice({
+        title: action === "start" ? "Could not start engine" : "Could not pause engine",
+        message: error instanceof Error ? error.message : "The remote relay is unavailable. Check your connection and try again.",
+        kind: "error",
+      });
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const openScanner = async () => {
@@ -489,6 +521,91 @@ export default function App() {
           ["home", "⌂", "HOME"], ["trades", "⇄", "TRADES"], ["alerts", "◒", "INSIGHTS"], ["notifications", "♧", "NOTIFY"], ["settings", "⚙", "SETTINGS"]
         ] as const).map(([key, icon, label]) => <Pressable key={key} onPress={() => setTab(key)} style={styles.tabItem}><Text style={[styles.tabIcon, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{icon}</Text><Text style={[styles.tabLabel, { color: tab === key ? (isLight ? LIGHT.gold : C.green) : (isLight ? LIGHT.muted : C.muted) }]}>{label}</Text>{tab === key ? <View style={styles.tabIndicator} /> : null}</Pressable>)}
       </View>
+      <Modal
+        visible={confirmBotAction !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => { if (!actionBusy) setConfirmBotAction(null); }}
+      >
+        <View style={styles.actionModalBackdrop}>
+          <View style={[styles.actionModalCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
+            <View style={[styles.actionModalAccent, { backgroundColor: confirmBotAction === "start" ? "#2D9A66" : "#D89B32" }]} />
+            <View style={[styles.actionModalIcon, { backgroundColor: confirmBotAction === "start" ? (isLight ? "#E3F3E8" : "#183B2B") : (isLight ? "#FFF0D5" : "#3B2B16") }]}>
+              <Text style={{ fontSize: 25, fontWeight: "900", color: confirmBotAction === "start" ? (isLight ? "#28734F" : "#72D6A0") : (isLight ? "#996516" : "#F0BD60") }}>
+                {confirmBotAction === "start" ? "▶" : "Ⅱ"}
+              </Text>
+            </View>
+            <Text style={[styles.actionModalEyebrow, { color: confirmBotAction === "start" ? (isLight ? "#28734F" : "#72D6A0") : (isLight ? "#996516" : "#F0BD60") }]}>
+              ENGINE CONTROL · WINDOWS PC
+            </Text>
+            <Text style={[styles.actionModalTitle, isLight && { color: LIGHT.text }]}>
+              {confirmBotAction === "start" ? "Start AlgoGuardian?" : "Pause AlgoGuardian?"}
+            </Text>
+            <Text style={[styles.actionModalBody, isLight && { color: LIGHT.muted }]}>
+              {confirmBotAction === "start"
+                ? "Your PC will check its MT5 connection and configuration before the engine starts. If enabled, this may place real trades."
+                : "The engine will be asked to stop opening new trades. Any positions already open may remain active."}
+            </Text>
+            <View style={[styles.actionModalNote, isLight && { backgroundColor: LIGHT.panel2, borderColor: LIGHT.line }]}>
+              <Text style={[styles.actionModalNoteTitle, isLight && { color: LIGHT.text }]}>
+                {confirmBotAction === "start" ? "Before you continue" : "Important about open trades"}
+              </Text>
+              <Text style={[styles.actionModalNoteBody, isLight && { color: LIGHT.muted }]}>
+                {confirmBotAction === "start"
+                  ? "Check your account, strategy and risk limits. A queued request is not proof that the engine has started."
+                  : "Pausing does not close existing positions or cancel orders already held by your broker."}
+              </Text>
+            </View>
+            <View style={styles.actionModalButtons}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setConfirmBotAction(null)}
+                disabled={actionBusy}
+                style={[styles.actionModalCancel, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}
+              >
+                <Text style={[styles.actionModalCancelText, isLight && { color: LIGHT.text }]}>
+                  {confirmBotAction === "start" ? "Not now" : "Keep running"}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void confirmBotActionRequest()}
+                disabled={actionBusy}
+                style={[styles.actionModalConfirm, { backgroundColor: confirmBotAction === "start" ? "#238653" : "#C88A25", opacity: actionBusy ? 0.7 : 1 }]}
+              >
+                {actionBusy
+                  ? <ActivityIndicator color="#FFFFFF" />
+                  : <Text style={styles.actionModalConfirmText}>{confirmBotAction === "start" ? "Start engine" : "Pause engine"}</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={actionNotice !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setActionNotice(null)}
+      >
+        <View style={styles.actionModalBackdrop}>
+          <View style={[styles.actionModalCard, styles.actionNoticeCard, isLight && { backgroundColor: LIGHT.panel, borderColor: LIGHT.line }]}>
+            <View style={[styles.actionModalIcon, { backgroundColor: actionNotice?.kind === "success" ? (isLight ? "#E3F3E8" : "#183B2B") : (isLight ? "#FBE8E8" : "#3A2027") }]}>
+              <Text style={{ fontSize: 24, fontWeight: "900", color: actionNotice?.kind === "success" ? (isLight ? "#28734F" : "#72D6A0") : "#D84F5B" }}>
+                {actionNotice?.kind === "success" ? "✓" : "!"}
+              </Text>
+            </View>
+            <Text style={[styles.actionModalTitle, isLight && { color: LIGHT.text }]}>{actionNotice?.title}</Text>
+            <Text style={[styles.actionModalBody, isLight && { color: LIGHT.muted }]}>{actionNotice?.message}</Text>
+            <Pressable onPress={() => setActionNotice(null)} style={[styles.actionNoticeButton, { backgroundColor: actionNotice?.kind === "success" ? "#238653" : "#B83E49" }]}>
+              <Text style={styles.actionModalConfirmText}>Got it</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {actionBusy ? <View style={styles.busyOverlay}><ActivityIndicator color={C.green} /><Text style={styles.busyText}>Communicating with Windows PC…</Text></View> : null}
     </SafeAreaView>
     </SafeAreaProvider>
@@ -603,5 +720,22 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 7, fontWeight: "900", letterSpacing: 0.25, textAlign: "center", includeFontPadding: false },
   tabIndicator: { position: "absolute", top: 0, width: 18, height: 2, borderRadius: 2, backgroundColor: "#E8BD53" },
   busyOverlay: { position: "absolute", left: 0, right: 0, bottom: 60, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#172333", padding: 12, borderTopColor: C.line, borderTopWidth: 1 },
+  actionModalBackdrop: { flex: 1, backgroundColor: "rgba(7, 7, 6, 0.72)", justifyContent: "center", alignItems: "center", paddingHorizontal: 22, paddingVertical: 28 },
+  actionModalCard: { width: "100%", maxWidth: 420, overflow: "hidden", borderRadius: 25, borderWidth: 1, borderColor: "#5A451D", backgroundColor: "#11100D", paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20, alignItems: "center", shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 20 },
+  actionModalAccent: { position: "absolute", top: 0, left: 0, right: 0, height: 4 },
+  actionModalIcon: { width: 60, height: 60, borderRadius: 20, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  actionModalEyebrow: { fontSize: 9, fontWeight: "900", letterSpacing: 1.8, textAlign: "center", marginBottom: 8 },
+  actionModalTitle: { color: C.text, fontSize: 23, lineHeight: 29, fontWeight: "900", letterSpacing: -0.5, textAlign: "center" },
+  actionModalBody: { color: C.muted, fontSize: 12, lineHeight: 19, textAlign: "center", marginTop: 10 },
+  actionModalNote: { width: "100%", backgroundColor: "#19160F", borderColor: "#332B19", borderWidth: 1, borderRadius: 15, padding: 13, marginTop: 18, gap: 5 },
+  actionModalNoteTitle: { color: C.text, fontSize: 11, fontWeight: "900" },
+  actionModalNoteBody: { color: C.muted, fontSize: 11, lineHeight: 17 },
+  actionModalButtons: { width: "100%", flexDirection: "row", gap: 10, marginTop: 20 },
+  actionModalCancel: { flex: 1, minHeight: 47, borderRadius: 13, borderWidth: 1, borderColor: "#453A25", backgroundColor: "#19160F", alignItems: "center", justifyContent: "center", paddingHorizontal: 10 },
+  actionModalCancelText: { color: C.text, fontSize: 11, fontWeight: "800", textAlign: "center" },
+  actionModalConfirm: { flex: 1, minHeight: 47, borderRadius: 13, alignItems: "center", justifyContent: "center", paddingHorizontal: 10 },
+  actionModalConfirmText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900", textAlign: "center" },
+  actionNoticeCard: { paddingTop: 28 },
+  actionNoticeButton: { width: "100%", minHeight: 46, borderRadius: 13, alignItems: "center", justifyContent: "center", marginTop: 20 },
   busyText: { color: C.text, fontSize: 11, fontWeight: "700" }
 });
