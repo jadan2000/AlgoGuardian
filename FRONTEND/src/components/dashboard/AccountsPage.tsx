@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { AlertCircle, CheckCircle2, CircleHelp, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, RefreshCw, Server, ShieldCheck, Unplug, WalletCards, Wifi, WifiOff } from "lucide-react";
+import { AlertCircle, CheckCircle2, CircleHelp, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, QrCode, RefreshCw, Server, ShieldCheck, Smartphone, Unplug, WalletCards, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/config/api";
@@ -33,6 +33,9 @@ export default function AccountsPage() {
   const [saving, setSaving] = useState(false);
   const [action, setAction] = useState<"connect" | "disconnect" | "refresh" | null>(null);
   const [error, setError] = useState("");
+  const [pairingQr, setPairingQr] = useState<string | null>(null);
+  const [pairingExpires, setPairingExpires] = useState<number | null>(null);
+  const [pairingLoading, setPairingLoading] = useState(false);
 
   const request = useCallback(async (path: string, init: RequestInit = {}) => {
     const sessionResult = await supabase?.auth.getSession();
@@ -72,6 +75,28 @@ export default function AccountsPage() {
   useEffect(() => {
     void loadStatus();
   }, [loadStatus]);
+
+  const generatePairingQr = async () => {
+    setPairingLoading(true);
+    try {
+      const sessionResult = await supabase?.auth.getSession();
+      const token = sessionResult?.data.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please sign in again.");
+      const response = await fetch(`${API_BASE}/api/notifications/pairing-session`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `Could not create pairing QR (${response.status}).`);
+      setPairingQr(data.qr_data_url);
+      setPairingExpires(data.expires_in_seconds ?? 180);
+      toast.success("One-time phone pairing QR created.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create pairing QR.");
+    } finally {
+      setPairingLoading(false);
+    }
+  };
 
   const connect = async () => {
     setAction("connect");
@@ -161,6 +186,28 @@ export default function AccountsPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
+      <Card className="p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-primary/10 p-2 text-primary"><Smartphone className="h-5 w-5" /></div>
+            <div>
+              <h2 className="font-semibold">Pair your phone for push alerts</h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Generate a one-time QR code, then scan it from the AlgoGuardian phone app. It expires after 3 minutes and can be used once. Your MT5 account and trading engine remain on this PC.</p>
+            </div>
+          </div>
+          <Button onClick={() => void generatePairingQr()} disabled={pairingLoading}>
+            {pairingLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
+            {pairingLoading ? "Generating…" : pairingQr ? "Generate new QR" : "Generate pairing QR"}
+          </Button>
+        </div>
+        {pairingQr && (
+          <div className="mt-5 flex flex-col items-center gap-3 rounded-xl border border-border bg-background/50 p-4">
+            <img src={pairingQr} alt="One-time AlgoGuardian phone pairing QR code" className="h-64 w-64 rounded-lg bg-white p-2" />
+            <p className="text-center text-sm font-medium">Scan this code in the AlgoGuardian phone app now.</p>
+            <p className="max-w-xl text-center text-xs text-muted-foreground">The code expires in about {pairingExpires ?? 180} seconds and works once. Keep your phone and PC on the same trusted Wi-Fi network while pairing. Do not share screenshots of this QR code.</p>
+          </div>
+        )}
+      </Card>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"><WalletCards className="h-4 w-4" /> Account management</div>

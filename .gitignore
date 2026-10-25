@@ -35,3 +35,17 @@ __pycache__/
 # Encrypted broker credentials managed by the Accounts page
 BACKEND/storage/mt5_credentials.enc
 BACKEND/storage/mt5_credentials.tmp
+
+# Firebase private configuration and service-account credentials
+NOTIFICATIONS/google-services.json
+*firebase-admin*.json
+*firebase-service-account*.json
+
+# Per-installation phone notification registry (contains private FCM device tokens)
+BACKEND/storage/notification_devices.json
+BACKEND/storage/notification_devices.tmp
+BACKEND/storage/notification_identity.json
+BACKEND/storage/notification_identity.tmp
+
+# Firebase project selection is machine-specific
+.firebaserc

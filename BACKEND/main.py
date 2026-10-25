@@ -18,6 +18,7 @@ from api.routes.bot import router as bot_router
 from api.routes.config import router as config_router
 from api.routes.logs import router as logs_router
 from api.routes.mt5_account import router as mt5_account_router
+from api.routes.notifications import router as notifications_router
 from api.routes.payments import router as payments_router
 from api.routes.trades import router as trades_router
 from engine.bot_runner import run_bot
@@ -60,6 +61,7 @@ app.include_router(config_router, prefix="/config", tags=["config"])
 app.include_router(trades_router, prefix="/trades", tags=["trades"])
 app.include_router(logs_router, prefix="/logs", tags=["logs"])
 app.include_router(mt5_account_router, prefix="/api/mt5-account", tags=["MT5 account"])
+app.include_router(notifications_router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 app.include_router(account_router, prefix="/api/trading", tags=["account"])
 app.include_router(payments_router, prefix="/api/payments", tags=["payments"])

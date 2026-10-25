@@ -7,7 +7,18 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "android": {"package": "com.algoguardian.alerts"},
-    "plugins": ["expo-notifications"]
+    "android": {
+      "package": "com.algoguardian.alerts",
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AlgoGuardian uses the camera to scan the one-time pairing QR code from your Windows PC."
+        }
+      ],
+      "expo-notifications"
+    ]
   }
 }

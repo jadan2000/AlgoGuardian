@@ -1,0 +1,76 @@
+name: Backend safety checks
+
+on:
+  push:
+    paths:
+      - "BACKEND/**"
+      - "FIREBASE/**"
+      - "NOTIFICATIONS/**"
+      - "FRONTEND/**"
+      - ".github/workflows/backend-safety.yml"
+  pull_request:
+    paths:
+      - "BACKEND/**"
+      - ".github/workflows/backend-safety.yml"
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile backend Python
+        run: python -m compileall -q BACKEND
+      - name: Test local notification registry
+        env:
+          PYTHONPATH: BACKEND
+        run: python -m unittest discover -s BACKEND/tests -v
+
+  firebase-relay-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: FIREBASE/functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install relay dependencies
+        run: npm install --ignore-scripts
+      - name: Check Firebase relay syntax
+        run: node --check index.js
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: FRONTEND
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: FRONTEND/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build Windows dashboard frontend
+        run: npm run build
+
+  notifications-app-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: NOTIFICATIONS
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Android app dependencies
+        run: npm install
+      - name: Typecheck QR pairing app
+        run: npm run typecheck

@@ -7,6 +7,7 @@ from services.config_service import load_config
 from services import bot_state
 from engine.session_manager import SessionManager
 from engine.mt5_connector import MT5Connector
+from services.firebase_notifications import send_push
 
 router = APIRouter()
 mt5_connector = MT5Connector()
@@ -27,6 +28,7 @@ def start_bot():
     bot_state.BOT_RUNNING = True
     bot_state.BOT_PAUSED = False
     bot_state.KILL_SWITCH = False
+    send_push("engine_started", "AlgoGuardian trading engine was started.")
     return {"success": True, "bot": "running"}
 
 
@@ -34,6 +36,7 @@ def start_bot():
 def pause_bot():
     bot_state.BOT_RUNNING = False
     bot_state.BOT_PAUSED = True
+    send_push("engine_stopped", "AlgoGuardian trading engine was paused.")
     return {"success": True, "bot": "paused"}
 
 
@@ -42,6 +45,7 @@ def kill_bot():
     bot_state.BOT_RUNNING = False
     bot_state.BOT_PAUSED = True
     bot_state.KILL_SWITCH = True
+    send_push("engine_stopped", "AlgoGuardian was stopped by the kill switch.")
     return {"success": True, "bot": "killed"}
 
 
@@ -157,6 +161,7 @@ def close_trade(ticket: int):
     if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
         raise HTTPException(status_code=500, detail="Close failed: no supported filling mode succeeded")
 
+    send_push("trade_closed", f"Closed {position.symbol} {trade_type} position #{ticket}.")
     return {"success": True, "ticket": ticket, "message": "Trade closed successfully"}
 
 

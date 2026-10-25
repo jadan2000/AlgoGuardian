@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Installation documents are accessed only by the trusted Cloud Function
+    // using the Admin SDK. Client SDKs must never read or write device tokens.
+    match /notificationInstallations/{installationId} {
+      allow read, write: if false;
+    }
+  }
+}

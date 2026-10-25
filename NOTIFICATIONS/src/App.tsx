@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator, Alert, SafeAreaView, ScrollView, StatusBar,
+  StyleSheet, Text, Pressable, View
+} from "react-native";
 import * as Notifications from "expo-notifications";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Device from "expo-device";
-import Constants from "expo-constants";
+import * as SecureStore from "expo-secure-store";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -14,73 +18,229 @@ Notifications.setNotificationHandler({
 });
 
 type AlertItem = { title: string; body: string; receivedAt: string };
+const URL_KEY = "algoguardian_local_backend_url";
 
 export default function App() {
   const [permission, setPermission] = useState("Checking");
-  const [pushToken, setPushToken] = useState("");
+  const [fcmToken, setFcmToken] = useState("");
+  const [backendUrl, setBackendUrl] = useState("");
+  const [registration, setRegistration] = useState("Not paired");
+  const [busy, setBusy] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [latest, setLatest] = useState<AlertItem[]>([]);
 
   useEffect(() => {
     let mounted = true;
     const setup = async () => {
+      const savedUrl = await SecureStore.getItemAsync(URL_KEY);
+      if (mounted) {
+        if (savedUrl) setBackendUrl(savedUrl);
+      }
+
       if (!Device.isDevice) {
-        if (mounted) setPermission("Use a physical Android device for push notifications.");
+        if (mounted) setPermission("Use a physical Android device for Firebase push notifications.");
         return;
       }
+
+      await Notifications.setNotificationChannelAsync("algoguardian-alerts", {
+        name: "AlgoGuardian Alerts",
+        importance: Notifications.AndroidImportance.MAX,
+        sound: "default",
+        vibrationPattern: [0, 250, 250, 250]
+      });
+
       const current = await Notifications.getPermissionsAsync();
       let status = current.status;
       if (status !== "granted") status = (await Notifications.requestPermissionsAsync()).status;
       if (!mounted) return;
-      setPermission(status === "granted" ? "Notifications enabled" : "Notifications permission not granted");
-      if (status !== "granted") return;
-      const projectId = Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
-      if (!projectId) {
-        setPermission("Permission granted; configure an Expo EAS project ID to register push delivery.");
+      if (status !== "granted") {
+        setPermission("Notifications permission not granted");
         return;
       }
-      const token = await Notifications.getExpoPushTokenAsync({ projectId });
-      if (mounted) setPushToken(token.data);
+      setPermission("Notifications permission granted");
+      const token = await Notifications.getDevicePushTokenAsync();
+      if (mounted) {
+        setFcmToken(String(token.data));
+        setPermission("FCM device token ready");
+      }
     };
-    void setup().catch(() => { if (mounted) setPermission("Notification setup failed. Check permissions and project configuration."); });
+
+    void setup().catch((error: unknown) => {
+      if (mounted) {
+        const detail = error instanceof Error ? error.message : "Unknown setup error";
+        setPermission("Firebase setup failed: " + detail);
+      }
+    });
+
     const received = Notifications.addNotificationReceivedListener((notification) => {
       const content = notification.request.content;
-      setLatest((items) => [{ title: content.title ?? "AlgoGuardian alert", body: content.body ?? "", receivedAt: new Date().toLocaleString() }, ...items].slice(0, 20));
+      setLatest((items) => [{
+        title: content.title ?? "AlgoGuardian alert",
+        body: content.body ?? "",
+        receivedAt: new Date().toLocaleString()
+      }, ...items].slice(0, 20));
     });
     const response = Notifications.addNotificationResponseReceivedListener((event) => {
       const content = event.notification.request.content;
-      setLatest((items) => [{ title: content.title ?? "AlgoGuardian alert", body: content.body ?? "", receivedAt: new Date().toLocaleString() }, ...items].slice(0, 20));
+      setLatest((items) => [{
+        title: content.title ?? "AlgoGuardian alert",
+        body: content.body ?? "",
+        receivedAt: new Date().toLocaleString()
+      }, ...items].slice(0, 20));
     });
+
     return () => { mounted = false; received.remove(); response.remove(); };
   }, []);
+
+  const normalizedUrl = () => backendUrl.trim().replace(/\/+$/, "");
+
+  const openScanner = async () => {
+    if (!cameraPermission?.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) {
+        Alert.alert("Camera permission needed", "Allow camera access to scan the one-time QR code displayed by your Windows PC.");
+        return;
+      }
+    }
+    setScanned(false);
+    setShowScanner(true);
+  };
+
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (scanned || busy) return;
+    setScanned(true);
+    let pairing: { type?: string; backendUrl?: string; code?: string };
+    try {
+      pairing = JSON.parse(data);
+    } catch {
+      setShowScanner(false);
+      Alert.alert("Invalid QR code", "Scan the one-time AlgoGuardian pairing QR displayed in your Windows dashboard.");
+      return;
+    }
+    const url = (pairing.backendUrl || "").trim().replace(/\/+$/, "");
+    if (pairing.type !== "algoguardian-pair" || !/^https?:\/\//i.test(url) || !pairing.code) {
+      setShowScanner(false);
+      Alert.alert("Invalid QR code", "This QR code is not an AlgoGuardian phone-pairing code.");
+      return;
+    }
+    if (!fcmToken) {
+      setShowScanner(false);
+      Alert.alert("Push token not ready", "Wait for Firebase to finish registering this phone, then scan again.");
+      return;
+    }
+
+    setBusy(true);
+    setRegistration("Pairing with your Windows PC…");
+    try {
+      const response = await fetch(url + "/api/notifications/pair/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: pairing.code,
+          token: fcmToken,
+          device_name: Device.deviceName || "Android phone"
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.detail || "Pairing failed (HTTP " + response.status + ").");
+      await SecureStore.setItemAsync(URL_KEY, url);
+      setBackendUrl(url);
+      setRegistration("Paired with your Windows installation");
+      setShowScanner(false);
+      Alert.alert("Phone paired", "This phone will receive alerts from the Windows installation you scanned.");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Could not reach the Windows backend.";
+      setRegistration("Pairing failed");
+      setShowScanner(false);
+      Alert.alert("Could not pair phone", detail + "\n\nMake sure both devices are on the same trusted Wi-Fi network and the Windows backend is running.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unpairDevice = async () => {
+    const url = normalizedUrl();
+    if (!url || !fcmToken) {
+      await SecureStore.deleteItemAsync(URL_KEY);
+      setBackendUrl("");
+      setRegistration("Pairing details cleared. If the PC is offline, remove the old device from that installation when it is available.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch(url + "/api/notifications/pair/unpair", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: fcmToken })
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.detail || "Unpair request failed.");
+      }
+      await SecureStore.deleteItemAsync(URL_KEY);
+      setBackendUrl("");
+      setRegistration("Phone unpaired");
+    } catch (error) {
+      Alert.alert("Could not unpair phone", error instanceof Error ? error.message : "Try again when the Windows PC is reachable.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.logo}><Text style={styles.logoText}>AG</Text></View>
-          <View><Text style={styles.brand}>AlgoGuardian</Text><Text style={styles.subBrand}>Phone alerts</Text></View>
+          <View><Text style={styles.brand}>AlgoGuardian</Text><Text style={styles.subBrand}>Private phone alerts</Text></View>
         </View>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>NOTIFICATION-ONLY COMPANION</Text>
-          <Text style={styles.title}>Your trading.{"\n"}Always in view.</Text>
-          <Text style={styles.description}>Receive alerts from AlgoGuardian on your laptop. Broker credentials, trading settings, and orders stay on the laptop.</Text>
+          <Text style={styles.eyebrow}>WINDOWS ENGINE · MT5 · FCM</Text>
+          <Text style={styles.title}>Your trading.{ "\n" }Your alerts.</Text>
+          <Text style={styles.description}>Pair this phone with your own Windows installation. The trading engine and MT5 account stay on that PC; alerts are sent only to phones registered with that installation.</Text>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardLabel}>PUSH STATUS</Text>
           <Text style={styles.status}>{permission}</Text>
-          <Text style={styles.hint}>Push delivery needs a configured relay and Expo project.</Text>
-          {pushToken ? <Text selectable style={styles.token}>Device token: {pushToken}</Text> : null}
+          <Text style={styles.hint}>Keep the Windows PC online for new events to be sent. Firebase delivers push notifications when this app is closed.</Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>PAIR WITH YOUR WINDOWS PC</Text>
+          <Text style={styles.hint}>On your Windows dashboard, open Broker Accounts and generate a one-time pairing QR. Scan it here while both devices are on the same trusted Wi-Fi network.</Text>
+          <Text style={styles.registration}>{registration}</Text>
+          <Pressable style={[styles.primaryButton, (busy || !fcmToken) && styles.disabledButton]} onPress={() => void openScanner()} disabled={busy || !fcmToken}>
+            {busy ? <ActivityIndicator color="#092319" /> : <Text style={styles.primaryButtonText}>Scan pairing QR code</Text>}
+          </Pressable>
+          {showScanner && (
+            <View style={styles.scanner}>
+              <CameraView
+                style={styles.camera}
+                facing="back"
+                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+              />
+              <Text style={styles.hint}>Point your camera at the QR code on the Windows dashboard.</Text>
+              <Pressable style={styles.secondaryButton} onPress={() => setShowScanner(false)}>
+                <Text style={styles.secondaryButtonText}>Cancel scan</Text>
+              </Pressable>
+            </View>
+          )}
+          <Pressable style={[styles.secondaryButton, busy && styles.disabledButton]} onPress={unpairDevice} disabled={busy}>
+            <Text style={styles.secondaryButtonText}>Unpair this phone</Text>
+          </Pressable>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardLabel}>RECENT ALERTS</Text>
-          {latest.length === 0 ? <Text style={styles.hint}>No alerts received yet. Notification pairing and relay delivery still need configuration.</Text> : latest.map((item, index) => (
+          {latest.length === 0 ? <Text style={styles.hint}>No alerts received yet. Pair this phone, then send a test notification from the Windows installation.</Text> : latest.map((item, index) => (
             <View key={item.receivedAt + "-" + index} style={styles.alert}>
               <Text style={styles.alertTitle}>{item.title}</Text><Text style={styles.alertBody}>{item.body}</Text><Text style={styles.time}>{item.receivedAt}</Text>
             </View>
           ))}
         </View>
-        <Text style={styles.footer}>This app cannot log in to your broker, change risk settings, or place trades.</Text>
+        <Text style={styles.footer}>This app does not connect to your broker or place trades.</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -102,10 +262,17 @@ const styles = StyleSheet.create({
   cardLabel: { color: "#8fa4c1", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
   status: { color: "#f0f5ff", fontSize: 16, fontWeight: "700" },
   hint: { color: "#a8b6cb", lineHeight: 20, fontSize: 13 },
-  token: { color: "#8fe0b7", fontSize: 11 },
+  registration: { color: "#8fe0b7", fontSize: 12, fontWeight: "700" },
+  primaryButton: { backgroundColor: "#8fe0b7", borderRadius: 10, padding: 14, alignItems: "center", justifyContent: "center", minHeight: 48 },
+  primaryButtonText: { color: "#092319", fontWeight: "900" },
+  secondaryButton: { borderColor: "#354761", borderWidth: 1, borderRadius: 10, padding: 12, alignItems: "center" },
+  secondaryButtonText: { color: "#c7d3e4", fontWeight: "700" },
+  disabledButton: { opacity: 0.5 },
   alert: { paddingTop: 10, borderTopColor: "#26364e", borderTopWidth: 1, gap: 4 },
   alertTitle: { color: "#f0f5ff", fontWeight: "700" },
   alertBody: { color: "#a8b6cb" },
   time: { color: "#72849d", fontSize: 11 },
+  scanner: { gap: 10, marginTop: 8 },
+  camera: { width: "100%", height: 320, borderRadius: 12, overflow: "hidden" },
   footer: { color: "#72849d", fontSize: 12, lineHeight: 18, paddingBottom: 20 }
 });
