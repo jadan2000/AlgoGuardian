@@ -4,7 +4,8 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+import time
+from datetime import datetime, timezone, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, quote, urlsplit
 from urllib.request import Request, urlopen
@@ -169,7 +170,30 @@ def start_stk_push(body: STKPushRequest, x_api_key: str | None = Header(default=
 @app.post("/api/website/stk-push")
 def website_stk_push(body: STKPushRequest, authorization: str | None = Header(default=None)):
     user = current_supabase_user(authorization)
-    return _start_stk_push(body, user_id=user["id"])
+    user_id = str(user["id"])
+
+    profiles = supabase_request(
+        "profiles?" + urlencode({"id": f"eq.{user_id}", "select": "activation_status", "limit": "1"})
+    )
+    if isinstance(profiles, list) and profiles and profiles[0].get("activation_status") == "active":
+        raise HTTPException(status_code=409, detail="This account is already activated.")
+
+    recent = supabase_request(
+        "stk_transactions?" + urlencode({
+            "user_id": f"eq.{user_id}",
+            "created_at": f"gte.{(datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()}",
+            "select": "id,status,created_at",
+            "order": "created_at.desc",
+            "limit": "10",
+        })
+    )
+    if isinstance(recent, list):
+        if any(row.get("status") in ("initiating", "pending") for row in recent):
+            raise HTTPException(status_code=409, detail="A payment is already in progress. Wait for it to finish before trying again.")
+        if len(recent) >= 3:
+            raise HTTPException(status_code=429, detail="Too many payment attempts. Please wait ten minutes and try again.")
+
+    return _start_stk_push(body, user_id=user_id)
 
 
 def _start_stk_push(body: STKPushRequest, user_id: str | None):
@@ -263,14 +287,21 @@ async def payment_callback(request: FastAPIRequest):
     except (ValueError, TypeError, KeyError):
         return {"ResultCode": 0, "ResultDesc": "Callback received"}
 
-    rows = supabase_request(
-        "stk_transactions?" + urlencode({
-            "checkout_request_id": f"eq.{checkout_id}",
-            "select": "id,user_id,phone_number,amount,status",
-            "limit": "1",
-        })
-    )
-    if not isinstance(rows, list) or not rows or rows[0].get("status") != "pending":
+    rows = []
+    # Daraja may callback before the initiation request persists the checkout ID.
+    for attempt in range(6):
+        rows = supabase_request(
+            "stk_transactions?" + urlencode({
+                "checkout_request_id": f"eq.{checkout_id}",
+                "select": "id,user_id,phone_number,amount,status",
+                "limit": "1",
+            })
+        )
+        if isinstance(rows, list) and rows:
+            break
+        if attempt < 5:
+            time.sleep(1)
+    if not isinstance(rows, list) or not rows or rows[0].get("status") not in ("pending", "initiating"):
         return {"ResultCode": 0, "ResultDesc": "Callback received"}
     payment = rows[0]
 
@@ -307,8 +338,9 @@ async def payment_callback(request: FastAPIRequest):
         )
         return {"ResultCode": 0, "ResultDesc": "Callback received"}
 
-    supabase_request(
-        f"stk_transactions?id=eq.{quote(payment['id'])}&status=eq.pending",
+    # Conditional transition prevents duplicate callbacks from repeating activation.
+    updated = supabase_request(
+        f"stk_transactions?id=eq.{quote(payment['id'])}&status=in.(pending,initiating)",
         method="PATCH",
         payload={
             "status": "paid",
@@ -316,12 +348,11 @@ async def payment_callback(request: FastAPIRequest):
             "result_code": callback_code,
             "result_description": str(callback.get("ResultDesc", ""))[:250],
         },
-        prefer="return=minimal",
+        prefer="return=representation",
     )
-    # Only website-originated transactions are tied to an account. Activate after
-    # successful Daraja query plus amount, phone, and receipt validation above.
+    # Activate only when this callback actually transitioned the payment to paid.
     user_id = payment.get("user_id")
-    if user_id:
+    if user_id and isinstance(updated, list) and updated:
         supabase_request(
             f"profiles?id=eq.{quote(str(user_id))}",
             method="PATCH",
